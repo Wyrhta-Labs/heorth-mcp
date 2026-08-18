@@ -1,0 +1,125 @@
+name: Build & Push Container Image
+
+on:
+  push:
+    # Pre-alpha single-trunk flow, same as Heorth and KithLedger: `main` is the
+    # only branch, so main pushes and `v*` tags are the only things that publish.
+    # Feature branches and pull requests deliberately do NOT publish — the
+    # registry is a deploy surface, not a scratch pad, and every extra tag is a
+    # tag an operator has to ignore forever.
+    branches:
+      - main
+    tags:
+      - "v*"
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  # The built-in GITHUB_TOKEN is the only credential here: `packages: write`
+  # lets it push to ghcr.io/<owner>/<repo>. No PAT, no repository secret.
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Full gate: typecheck (src + tests) and the whole vitest suite.
+  #
+  # Unlike Heorth/KithLedger — where `ci` is an independent, non-blocking signal
+  # because their real suites need a Postgres service — heorth-mcp's suite is
+  # hermetic (no database, no network, faked upstreams via the set*Runtime seam).
+  # It runs in seconds on a bare runner, so there is no reason not to make it a
+  # hard precondition of publishing: a red suite must never reach the registry.
+  ci:
+    name: Typecheck & Test
+    if: >-
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      !contains(github.event.head_commit.message, '[skipci]') &&
+      !contains(github.event.head_commit.message, '[no ci]') &&
+      !contains(github.event.head_commit.message, '[no build]')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          # 22 to match the Dockerfile's node:22-alpine stages and the
+          # `engines.node` floor. This is a different axis from the Node the
+          # *actions* run on (set by the action majors pinned above).
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+  build:
+    name: Build & Push
+    # The publish gate. Without this the image could ship a broken build.
+    needs: ci
+    if: >-
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      !contains(github.event.head_commit.message, '[skipci]') &&
+      !contains(github.event.head_commit.message, '[no ci]') &&
+      !contains(github.event.head_commit.message, '[no build]')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # On a `v*` tag push: the release versions, e.g. v0.2.0 -> 0.2.0,
+            # 0.2, 0. The default flavor `latest=auto` additionally applies
+            # `latest` on semver tag pushes only, so `latest` stays a
+            # release-only pointer and never tracks main.
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            # On a main push: the moving `main` tag, plus an immutable
+            # `main-<short sha>` that deploy/compose.prod.yml can pin.
+            type=ref,event=branch
+            type=sha,prefix=main-,format=short,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          # Single-arch on purpose: the household docker host is linux/amd64.
+          # A linux/arm64 leg would roughly double build time (QEMU emulation
+          # for the `npm ci` + `tsc` stages) to serve a machine that does not
+          # exist. Add it the day the stack moves to arm.
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # GitHub Actions cache: repeat builds reuse the npm ci / tsc layers.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

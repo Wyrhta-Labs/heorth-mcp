@@ -27,6 +27,39 @@ The MCP code still lives embedded in Heorth and KithLedger.
 Created by **ADR 0008 — MCP as a standalone container over REST** in the meta
 repo `Wyrhta-Labs/wyrhta-labs`.
 
+## Container image
+
+Published to the GitHub Container Registry as
+**`ghcr.io/wyrhta-labs/heorth-mcp`** by
+[`.github/workflows/build-image.yml`](.github/workflows/build-image.yml). The
+workflow typechecks and runs the full test suite first — a red suite blocks the
+publish — then builds this repo's `Dockerfile` for `linux/amd64`.
+
+Only two things publish: a push to `main` and a `v*` git tag. Nothing else
+does, so the registry stays free of branch junk.
+
+| Tag | Produced by | Pinnable? |
+|---|---|---|
+| `main-<short sha>` | every push to `main` | yes — immutable, one build per commit |
+| `<version>`, `<major>.<minor>`, `<major>` | a `v*` tag push (e.g. `v0.2.0` -> `0.2.0`, `0.2`, `0`) | `<version>` yes; the truncated ones move |
+| `main` | every push to `main` | no — moving pointer |
+| `latest` | a `v*` tag push only | no — moving pointer |
+
+**Pinning it in production.** The meta repo's `deploy/compose.prod.yml`
+requires an explicit tag in `deploy/.env`:
+
+```
+HEORTH_MCP_IMAGE_TAG=main-a1b2c3d   # a main build, by short commit sha
+HEORTH_MCP_IMAGE_TAG=0.2.0          # a release, once a v0.2.0 tag exists
+```
+
+Never pin `latest` or `main` — both move under the running deployment and
+defeat the point of pinning. Use the exact `main-<sha>` shown in the workflow
+run (or `docker images`), or the semver of a release.
+
+The image is private, like the repo. A host that pulls it needs a GHCR login
+with `read:packages` for the `Wyrhta-Labs` org.
+
 ## Related repos
 
 | Repo | Role |
