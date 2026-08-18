@@ -14,6 +14,8 @@ export interface ScriptedResponse {
   body?: unknown;
   /** Raw body, for testing non-JSON answers. Wins over `body`. */
   text?: string;
+  /** Response `Content-Type` (default `application/json`), for text answers. */
+  contentType?: string;
   /** Reject instead of answering — a connection failure. */
   throws?: unknown;
   /** Never settle, so the client's timeout fires. */
@@ -54,7 +56,7 @@ export function createFakeUpstream(...initial: ScriptedResponse[]): FakeUpstream
     // 204/205/304 must not carry a body — the Response constructor rejects one.
     return new Response(status === 204 || status === 205 || status === 304 ? null : body, {
       status,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': next.contentType ?? 'application/json' },
     });
   }) as typeof fetch;
 
