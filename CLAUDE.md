@@ -6,9 +6,10 @@ against an upstream service's **public REST API**.
 
 Node.js 22 + TypeScript, Hono, Zod, Vitest. No database, no ORM, no migrations.
 
-> **Status: spec-only.** This repo currently contains the specification under
-> `docs/spec/` and no implementation. The MCP code still lives embedded in
-> Heorth (`src/mcp/`, `src/**/mcp.ts`) and KithLedger (`src/mcp/`) and is
+> **Status: skeleton.** The MCP scaffold, the HTTP transport, config, and the
+> two upstream REST clients are in place; **no tools are ported yet**, so the
+> server currently serves an empty tool list. The MCP code still lives embedded
+> in Heorth (`src/mcp/`, `src/**/mcp.ts`) and KithLedger (`src/mcp/`) and is
 > removed from those repos only once the equivalent tool here is green.
 > See [`docs/spec/migration.md`](docs/spec/migration.md).
 
@@ -90,6 +91,16 @@ Sibling repos: `Wyrhta-Labs/Heorth` (hub), `Wyrhta-Labs/KithLedger`
 
 ## Common commands
 
-Not yet — there is no implementation. When there is, they belong here.
+```
+npm run dev         # tsx watch src/index.ts
+npm run typecheck   # src + tests
+npm test            # vitest run (hermetic: no network, no database)
+npm run build       # tsc -> dist/
+npm start           # node dist/index.js
+```
+
+Config comes from the environment, validated in `src/config/env.ts`:
+`HEORTH_BASE_URL`, `KITH_BASE_URL`, `KITH_API_KEY` (required when
+`KITH_BASE_URL` is set), `PORT`, `UPSTREAM_TIMEOUT_MS`. See `.env.example`.
 
 Git operations against GitHub go through `gh` (the credential helper).

@@ -13,8 +13,10 @@ MCP client ──Streamable HTTP──▶ heorth-mcp ──▶ Heorth REST      
 
 ## Status
 
-**Spec only — no implementation yet.** The MCP code still lives embedded in
-Heorth and KithLedger.
+**Skeleton — no tools yet.** The MCP scaffold, HTTP transport, config, and the
+Heorth/KithLedger REST clients are in place; the tool surface itself is still
+being ported, so the server currently answers `tools/list` with an empty list.
+The MCP code still lives embedded in Heorth and KithLedger.
 
 - [`docs/spec/tool-surface.md`](docs/spec/tool-surface.md) — the 50-tool contract
   and its REST mapping
