@@ -59,6 +59,26 @@ heorth-mcp  ── HEORTH_BASE_URL ──▶  Heorth REST   /api/v1/*   (he_ key
 - A missing or malformed `Authorization` header fails the request before any
   upstream call. Never log key material.
 
+**Settled (A1/A2 — these are decided, not open):**
+
+- **`initialize` and `tools/list` are unauthenticated; the key is demanded at
+  `tools/call`.** This matches Heorth's existing MCP behaviour and is
+  deliberate: a client may discover the surface before it holds a credential.
+- **`McpPrincipal.userId` is a SHA-256 fingerprint of the presented key**, used
+  only for log correlation, and `role` is unset. heorth-mcp validates nothing
+  locally and must not assert an identity it did not verify.
+  **Verified (task A4):** Heorth's REST routes carry the guards themselves —
+  `requireRole('admin','adult')` on every feoh and inventory write, the
+  maintenance-admin quarantine on the acting principal, `assertCanMutate` on
+  calendar writes — and derive the actor from the authenticated caller
+  (`requireAuth` resolves an `he_` key to `{ userId, role }`). **No guard is
+  lost in the port: whoever ports `feoh.*` (or `inventory.*`) must not re-add a
+  local role check.** Likewise `household.whoami` has to go through
+  `GET /api/v1/auth/whoami` — the fingerprint is not a member id.
+- **`KITH_BASE_URL` without `KITH_API_KEY` fails at boot.** Temporary: issue #1
+  decision 9 replaces the service key with a member JWT (task B11), at which
+  point the credential is resolved per request instead of from the environment.
+
 ## Conventions
 
 - **Tools are namespaced by upstream area** (`<area>.<verb_noun>`, snake_case
@@ -101,6 +121,8 @@ npm start           # node dist/index.js
 
 Config comes from the environment, validated in `src/config/env.ts`:
 `HEORTH_BASE_URL`, `KITH_BASE_URL`, `KITH_API_KEY` (required when
-`KITH_BASE_URL` is set), `PORT`, `UPSTREAM_TIMEOUT_MS`. See `.env.example`.
+`KITH_BASE_URL` is set), `PORT` (default **3200**), `UPSTREAM_TIMEOUT_MS`
+(default **10000** — 10s per upstream call). See `.env.example`. The container
+also serves **`/health`** for its healthcheck, alongside `/mcp`.
 
 Git operations against GitHub go through `gh` (the credential helper).
