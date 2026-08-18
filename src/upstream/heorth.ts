@@ -70,6 +70,27 @@ export class HeorthClient {
     return this.transport.request<T>({ method: 'PATCH', path, body: body ?? {} });
   }
 
+  /**
+   * `GET` a route whose success body is plain text, not the JSON envelope
+   * (`/feoh/export`). Errors still arrive as the envelope and are classified
+   * identically to every other call.
+   */
+  getText(path: string, query?: Record<string, QueryValue>): Promise<string> {
+    return this.transport.requestText({ method: 'GET', path, ...(query ? { query } : {}) });
+  }
+
+  /**
+   * `POST` a raw text body to a route that reads `c.req.text()` rather than
+   * `c.req.json()` (`/feoh/import`). The response is still the JSON envelope.
+   */
+  postText<T>(path: string, content: string, contentType?: string): Promise<T> {
+    return this.transport.request<T>({
+      method: 'POST',
+      path,
+      textBody: { content, ...(contentType === undefined ? {} : { contentType }) },
+    });
+  }
+
   delete<T>(path: string): Promise<T> {
     return this.transport.request<T>({ method: 'DELETE', path });
   }

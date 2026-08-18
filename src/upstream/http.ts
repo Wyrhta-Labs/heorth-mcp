@@ -9,7 +9,22 @@ export interface UpstreamRequest {
   /** Path below the API prefix, e.g. `/calendar` or `/people/${id}`. */
   path: string;
   query?: Record<string, QueryValue>;
+  /** JSON request body — `JSON.stringify`d and sent as `application/json`. */
   body?: unknown;
+  /**
+   * Raw request body, sent verbatim with a non-JSON `Content-Type`. For the
+   * upstream routes that read `c.req.text()` instead of `c.req.json()` —
+   * today only `POST /feoh/import`. Wins over {@link UpstreamRequest.body};
+   * set one or the other, never both.
+   */
+  textBody?: TextBody;
+}
+
+/** A raw (non-JSON) request body and the `Content-Type` it is sent under. */
+export interface TextBody {
+  content: string;
+  /** Default `text/plain; charset=utf-8`. */
+  contentType?: string;
 }
 
 export interface RestTransportOptions {
@@ -66,41 +81,78 @@ export class RestTransport {
    * is already safe to show an MCP client.
    */
   async request<T>(req: UpstreamRequest): Promise<T> {
+    const { res, text } = await this.exchange(req, 'application/json');
+    if (text.length === 0) return undefined as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch (e) {
+      // A 2xx that is not JSON where JSON was expected: the route answered, but
+      // not with the envelope this client speaks.
+      throw new UpstreamError('tool error', this.upstream, 'bad_response', res.status, e);
+    }
+  }
+
+  /**
+   * Perform one request whose *successful* response is plain text rather than
+   * the `{ data, meta }` envelope — `GET /feoh/export`, which answers
+   * `text/plain`. Errors are unchanged: a non-2xx still carries the JSON error
+   * envelope and is classified exactly as on the JSON path.
+   */
+  async requestText(req: UpstreamRequest): Promise<string> {
+    const { text } = await this.exchange(req, 'text/plain, application/json');
+    return text;
+  }
+
+  /**
+   * The one place this repo calls `fetch`: URL joining, the `Authorization`
+   * header, the timeout, and error classification. It returns the raw response
+   * text and leaves the decoding to the caller, so the JSON and text paths
+   * differ only in how a *successful* body is read — a non-2xx is mapped
+   * through {@link mapUpstreamErrorCode} either way.
+   *
+   * Nothing that could carry upstream URLs, headers, bodies or key material
+   * ever reaches an `UpstreamError` message.
+   */
+  private async exchange(
+    req: UpstreamRequest,
+    accept: string
+  ): Promise<{ res: Response; text: string }> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
       const headers: Record<string, string> = {
         Authorization: await this.authorization(),
-        Accept: 'application/json',
+        Accept: accept,
       };
-      if (req.body !== undefined) headers['Content-Type'] = 'application/json';
+
+      let body: string | undefined;
+      if (req.textBody !== undefined) {
+        body = req.textBody.content;
+        headers['Content-Type'] = req.textBody.contentType ?? 'text/plain; charset=utf-8';
+      } else if (req.body !== undefined) {
+        body = JSON.stringify(req.body);
+        headers['Content-Type'] = 'application/json';
+      }
 
       const res = await this.fetchImpl(this.url(req.path, req.query), {
         method: req.method,
         headers,
-        body: req.body === undefined ? undefined : JSON.stringify(req.body),
+        body,
         signal: controller.signal,
       });
 
       const text = await res.text();
-      let parsed: unknown;
-      if (text.length > 0) {
-        try {
-          parsed = JSON.parse(text);
-        } catch (e) {
-          if (res.ok) {
-            throw new UpstreamError(
-              'tool error',
-              this.upstream,
-              'bad_response',
-              res.status,
-              e
-            );
-          }
-        }
-      }
 
       if (!res.ok) {
+        let parsed: unknown;
+        if (text.length > 0) {
+          try {
+            parsed = JSON.parse(text);
+          } catch {
+            // An error page that is not the envelope — `mapUpstreamErrorCode`
+            // turns that into the generic `tool error`.
+          }
+        }
         throw new UpstreamError(
           mapUpstreamErrorCode(parsed),
           this.upstream,
@@ -108,7 +160,8 @@ export class RestTransport {
           res.status
         );
       }
-      return parsed as T;
+
+      return { res, text };
     } catch (e: unknown) {
       if (e instanceof UpstreamError) throw e;
       if (controller.signal.aborted) {
