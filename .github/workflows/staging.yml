@@ -1,0 +1,37 @@
+name: tests
+
+# heorth-mcp owns no data and talks to no database — its suite stubs the
+# upstream REST calls — so this needs no service container. Build and test only;
+# images come from build-image.yml. Runs on main, the pre-alpha single-trunk
+# branch, so every push and every pull request is covered.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: typecheck + test + build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
