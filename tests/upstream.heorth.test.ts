@@ -107,7 +107,10 @@ describe('HeorthClient', () => {
   it('classifies a connection failure without naming the upstream URL', async () => {
     const fake = createFakeUpstream({ throws: new TypeError('fetch failed: http://heorth.test') });
 
-    const error = await client(fake).get('/household').catch((e: unknown) => e as UpstreamError);
+    const error = await client(fake).get('/household').catch((e: unknown) => e);
+    if (!(error instanceof UpstreamError)) {
+      throw new Error(`expected an UpstreamError, got ${String(error)}`);
+    }
     expect(error.message).toBe('UPSTREAM_UNAVAILABLE');
     expect(error.kind).toBe('network');
     expect(error.message).not.toContain('heorth.test');

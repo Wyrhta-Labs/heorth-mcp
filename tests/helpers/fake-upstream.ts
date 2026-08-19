@@ -22,6 +22,15 @@ export interface ScriptedResponse {
   hang?: boolean;
 }
 
+/**
+ * The first two parameters of Node's global `fetch` — `string | URL | Request`
+ * and `RequestInit`. Derived from the runtime signature rather than written out,
+ * because the DOM `RequestInfo` alias does not exist without the `dom` lib and
+ * this project targets Node's undici-backed fetch only.
+ */
+type FetchInput = Parameters<typeof fetch>[0];
+type FetchInit = Parameters<typeof fetch>[1];
+
 export interface FakeUpstream {
   fetch: typeof fetch;
   requests: RecordedRequest[];
@@ -32,7 +41,7 @@ export function createFakeUpstream(...initial: ScriptedResponse[]): FakeUpstream
   const queue: ScriptedResponse[] = [...initial];
   const requests: RecordedRequest[] = [];
 
-  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const fetchImpl = (async (input: FetchInput, init?: FetchInit): Promise<Response> => {
     const headers: Record<string, string> = {};
     for (const [k, v] of Object.entries((init?.headers ?? {}) as Record<string, string>)) {
       headers[k] = v;

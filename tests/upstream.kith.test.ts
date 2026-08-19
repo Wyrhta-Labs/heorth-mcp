@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { KithClient, createKithClient, type KithCredential } from '../src/upstream/kith.js';
+import { UpstreamError } from '../src/upstream/errors.js';
 import { createFakeUpstream } from './helpers/fake-upstream.js';
 
 const CFG = { baseUrl: 'http://kith.test', audience: 'kithledger' };
@@ -79,8 +80,11 @@ describe('KithClient', () => {
       fetch: fake.fetch,
     })
       .get('/people')
-      .catch((e: Error) => e);
+      .catch((e: unknown) => e);
 
+    if (!(error instanceof UpstreamError)) {
+      throw new Error(`expected an UpstreamError, got ${String(error)}`);
+    }
     expect(error.message).toBe('tool error');
     expect(error.message).not.toContain('member.jwt');
     expect(error.message).not.toContain('kl_');
