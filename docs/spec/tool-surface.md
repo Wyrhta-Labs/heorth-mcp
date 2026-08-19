@@ -118,8 +118,14 @@ ported — see CLAUDE.md, "Auth".
 
 ## KithLedger upstream (`KITH_BASE_URL`) — 13 tools
 
-Auth: `kl_` **service key** (`KITH_API_KEY`), not the caller's identity — see
-ADR 0002 Phase A and the asymmetry note in `CLAUDE.md`. Routers are mounted at
+Auth: a **Heorth-issued member token**, exchanged per caller (ADR 0009, task
+B11) — `POST {HEORTH_BASE_URL}/api/v1/auth/satellite-token` with
+`{ "audience": "kithledger" }`, authenticated by the caller's own `he_` key,
+answering a 5-minute JWT that KithLedger verifies against Heorth's JWKS. So
+`kith.*` acts as the **calling member**, and KithLedger's ADR 0004 per-member
+enforcement applies to every row, edge and count these tools see; visibility is
+never filtered here. The `kl_` service key is gone — none of KithLedger's three
+credential kinds is the calling member. Routers are mounted at
 `/api/v1/{people,interactions,reminders,relationships}` (`src/routes/index.ts`).
 
 **All 13 mappings were already correct.** Field names verified against
@@ -190,6 +196,18 @@ snake_case/camelCase split.
    (e.g. `endAt >= startAt` on create-event), the upstream stays authoritative —
    do not weaken it, and do not duplicate it here.
 4. **Transport extensions** for the two feoh text endpoints (see above).
-5. **`kith.*` and per-member access control** (ADR 0004) — a single service
-   principal cannot express per-member visibility. Decide whether `kith.*` write
-   tools ship before the member-JWT change (issue #1 decision 9, task B11).
+5. ~~**`kith.*` and per-member access control** (ADR 0004) — a single service
+   principal cannot express per-member visibility.~~ **Closed by task B11**
+   (2026-08-19): `kith.*` calls now carry a per-caller member token exchanged at
+   Heorth (ADR 0009), so read *and* write tools express the calling member.
+   Three notes from the port:
+   - The input schemas carry ADR 0004's `visibility` / `sharedWith` fields,
+     because they are part of KithLedger's create/update validators and schemas
+     transfer verbatim. Their defaults stay upstream (the `household` column
+     default), and nothing here interprets them.
+   - `kith.list_reminders`' `statuses` field is a Zod `.transform` that splits on
+     commas, so the handler re-joins the array for the query string.
+   - `kith.create_relationship` takes the raw shape without the `.refine()` the
+     upstream schema wraps it in; the route enforces it, and duplicating a
+     stricter upstream rule is exactly what "the upstream stays authoritative"
+     forbids.

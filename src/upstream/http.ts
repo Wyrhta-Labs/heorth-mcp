@@ -18,6 +18,13 @@ export interface UpstreamRequest {
    * set one or the other, never both.
    */
   textBody?: TextBody;
+  /**
+   * `Authorization` for this one request, overriding the transport's own.
+   * Needed by the satellite token exchange (`src/upstream/exchange.ts`), whose
+   * transport is shared by every caller while the credential that authenticates
+   * an exchange is the *caller's* — it cannot be bound at construction.
+   */
+  authorization?: string;
 }
 
 /** A raw (non-JSON) request body and the `Content-Type` it is sent under. */
@@ -121,7 +128,7 @@ export class RestTransport {
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
       const headers: Record<string, string> = {
-        Authorization: await this.authorization(),
+        Authorization: req.authorization ?? (await this.authorization()),
         Accept: accept,
       };
 

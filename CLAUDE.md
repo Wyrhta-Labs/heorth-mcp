@@ -6,11 +6,10 @@ against an upstream service's **public REST API**.
 
 Node.js 22 + TypeScript, Hono, Zod, Vitest. No database, no ORM, no migrations.
 
-> **Status: skeleton.** The MCP scaffold, the HTTP transport, config, and the
-> two upstream REST clients are in place; **no tools are ported yet**, so the
-> server currently serves an empty tool list. The MCP code still lives embedded
-> in Heorth (`src/mcp/`, `src/**/mcp.ts`) and KithLedger (`src/mcp/`) and is
-> removed from those repos only once the equivalent tool here is green.
+> **Status: all 50 tools ported** — 37 Heorth (task A5) and 13 `kith.*` (task
+> B11). The MCP code still lives embedded in Heorth (`src/mcp/`,
+> `src/**/mcp.ts`) and KithLedger (`src/mcp/`) and is removed from those repos
+> only once the equivalent tool here is green.
 > See [`docs/spec/migration.md`](docs/spec/migration.md).
 
 ## The one rule that shapes everything
@@ -32,14 +31,17 @@ MCP client (Claude Desktop, Claude Code, …)
   │  Streamable HTTP, Authorization: Bearer he_...
   ▼
 heorth-mcp  ── HEORTH_BASE_URL ──▶  Heorth REST   /api/v1/*   (he_ key passed through)
-            ── KITH_BASE_URL   ──▶  KithLedger REST /api/v1/* (kl_ service key)
+            ── HEORTH_BASE_URL ──▶  POST /auth/satellite-token (exchange, ADR 0009)
+            ── KITH_BASE_URL   ──▶  KithLedger REST /api/v1/* (exchanged member JWT)
 ```
 
 - **One process, both upstreams.** The 37 Heorth tools (`household.*`,
   `calendar.*`, `meals.*`, `library.*`, `inventory.*`, `tasks.*`, `feoh.*`) and
   the 13 KithLedger tools (`kith.*`) are served from the same endpoint.
-- **Each upstream is optional.** With `HEORTH_BASE_URL` unset the Heorth tools
-  are not registered; same for `KITH_BASE_URL` and `kith.*`. The container
+- **Each upstream is optional** — with one asymmetry. With `HEORTH_BASE_URL`
+  unset the Heorth tools are not registered; same for `KITH_BASE_URL` and
+  `kith.*`. But `kith.*` also needs Heorth, because that is where its member
+  token is minted, so `KITH_BASE_URL` alone is a boot error. The container
   starts and serves whatever is configured, including nothing.
 - **Transport is HTTP.** Streamable HTTP is the only supported transport;
   stdio is not offered, not even for local dev — point a local client at the
@@ -51,11 +53,26 @@ heorth-mcp  ── HEORTH_BASE_URL ──▶  Heorth REST   /api/v1/*   (he_ key
   forwarded verbatim to Heorth. heorth-mcp never validates the key itself, holds
   no Heorth credential, and cannot act without a caller. Per-member permissions
   and Heorth's audit log stay intact end to end.
-- **KithLedger: service key.** heorth-mcp holds one `kl_` key
-  (`KITH_API_KEY`), per ADR 0002 Phase A — the same arrangement Heorth already
-  uses for the reminders feed. `kith.*` tools therefore act as one service
-  principal, not as the calling member. This is a known asymmetry; it resolves
-  when ADR 0002 Phase B (Heorth-issued SSO) lands.
+- **KithLedger: exchanged member token** (ADR 0009, task B11). heorth-mcp holds
+  **no** KithLedger credential. On the first `kith.*` call of a caller it posts
+  the caller's own `Authorization` header to Heorth's
+  `POST /api/v1/auth/satellite-token` with `{ "audience": "kithledger" }`, and
+  presents the returned 5-minute JWT (`sub`, `role`, `iss: heorth`,
+  `aud: kithledger`) to KithLedger, which verifies it against Heorth's JWKS and
+  provisions the member just in time. So `kith.*` acts as the **calling
+  member**, and KithLedger's ADR 0004 enforcement applies to it — do not
+  re-add a local permission check here, exactly as with the Heorth tools.
+  - **heorth-mcp must stay unmintable.** It holds no signing key and must never
+    acquire one; it can only ask Heorth, with a credential the caller supplied.
+  - **Token cache** (`src/upstream/exchange.ts`): in memory only, keyed by
+    `sha256(presented credential)` plus the audience, evicted at `exp - 30s`.
+    Never written to disk, never logged, never shared between callers — a
+    coarser key would let one member act as another.
+  - **Heorth is a runtime dependency of `kith.*`.** With Heorth unreachable they
+    fail `IDENTITY_UNAVAILABLE` even when KithLedger is healthy. ADR 0009
+    accepts that: Heorth is the identity authority.
+  - The old `kl_` service key (`KITH_API_KEY`) is **removed**, not repurposed.
+    None of KithLedger's three credential kinds is the calling member.
 - A missing or malformed `Authorization` header fails the request before any
   upstream call. Never log key material.
 
@@ -75,9 +92,11 @@ heorth-mcp  ── HEORTH_BASE_URL ──▶  Heorth REST   /api/v1/*   (he_ key
   lost in the port: whoever ports `feoh.*` (or `inventory.*`) must not re-add a
   local role check.** Likewise `household.whoami` has to go through
   `GET /api/v1/auth/whoami` — the fingerprint is not a member id.
-- **`KITH_BASE_URL` without `KITH_API_KEY` fails at boot.** Temporary: issue #1
-  decision 9 replaces the service key with a member JWT (task B11), at which
-  point the credential is resolved per request instead of from the environment.
+- ~~**`KITH_BASE_URL` without `KITH_API_KEY` fails at boot.**~~ **Superseded by
+  task B11.** There is no `KITH_API_KEY` any more; the boot rule is now
+  **`KITH_BASE_URL` without `HEORTH_BASE_URL` fails at boot**, because the
+  credential is exchanged per request at Heorth rather than read from the
+  environment. Both upstreams, or no `kith.*` tools.
 
 ## Conventions
 
@@ -120,8 +139,8 @@ npm start           # node dist/index.js
 ```
 
 Config comes from the environment, validated in `src/config/env.ts`:
-`HEORTH_BASE_URL`, `KITH_BASE_URL`, `KITH_API_KEY` (required when
-`KITH_BASE_URL` is set), `PORT` (default **3200**), `UPSTREAM_TIMEOUT_MS`
+`HEORTH_BASE_URL`, `KITH_BASE_URL` (requires `HEORTH_BASE_URL`), `KITH_AUDIENCE`
+(default **kithledger**), `PORT` (default **3200**), `UPSTREAM_TIMEOUT_MS`
 (default **10000** — 10s per upstream call). See `.env.example`. The container
 also serves **`/health`** for its healthcheck, alongside `/mcp`.
 

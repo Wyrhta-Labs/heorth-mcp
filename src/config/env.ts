@@ -21,19 +21,27 @@ const envSchema = z
     // starts and serves an empty tool list (CLAUDE.md, "Each upstream is optional").
     HEORTH_BASE_URL: z.string().url().optional(),
     KITH_BASE_URL: z.string().url().optional(),
-    KITH_API_KEY: z.string().min(1).optional(),
+    /**
+     * The satellite audience Heorth mints `kith.*` tokens for. Must be one of
+     * the slugs in Heorth's `SATELLITE_AUDIENCES` and match KithLedger's
+     * `SATELLITE_AUDIENCE`, or every exchange is refused `UNKNOWN_AUDIENCE`.
+     */
+    KITH_AUDIENCE: z.string().min(1).default('kithledger'),
     PORT: z.coerce.number().int().positive().default(3200),
     UPSTREAM_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
   })
   .superRefine((env, ctx) => {
-    // Heorth needs no credential here (the caller's key is passed through), but
-    // KithLedger does — a base URL without a key would register `kith.*` tools
-    // that can only ever fail, so fail at boot instead.
-    if (env.KITH_BASE_URL && !env.KITH_API_KEY) {
+    // heorth-mcp holds NO KithLedger credential (task B11, ADR 0009). A
+    // `kith.*` call authenticates with a member token exchanged at Heorth, so
+    // KithLedger is only reachable when Heorth is configured too — without it
+    // the `kith.*` tools could never authenticate at all. Registering tools
+    // that can only ever fail is worse than refusing to boot.
+    if (env.KITH_BASE_URL && !env.HEORTH_BASE_URL) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['KITH_API_KEY'],
-        message: 'KITH_API_KEY is required when KITH_BASE_URL is set',
+        path: ['HEORTH_BASE_URL'],
+        message:
+          'HEORTH_BASE_URL is required when KITH_BASE_URL is set: `kith.*` tools authenticate with a member token exchanged at Heorth (ADR 0009)',
       });
     }
   });
@@ -46,7 +54,8 @@ export interface HeorthUpstreamConfig {
 
 export interface KithUpstreamConfig {
   baseUrl: string;
-  apiKey: string;
+  /** The audience of the exchanged member token; no credential is held here. */
+  audience: string;
 }
 
 export interface AppConfig {
@@ -54,7 +63,10 @@ export interface AppConfig {
   timeoutMs: number;
   /** null when HEORTH_BASE_URL is unset — the Heorth tools are not registered. */
   heorth: HeorthUpstreamConfig | null;
-  /** null when KITH_BASE_URL is unset — the `kith.*` tools are not registered. */
+  /**
+   * null unless KITH_BASE_URL *and* HEORTH_BASE_URL are both set — the `kith.*`
+   * tools need Heorth for their member token, so both upstreams or no tools.
+   */
   kith: KithUpstreamConfig | null;
 }
 
@@ -71,8 +83,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     timeoutMs: env.UPSTREAM_TIMEOUT_MS,
     heorth: env.HEORTH_BASE_URL ? { baseUrl: env.HEORTH_BASE_URL } : null,
     kith:
-      env.KITH_BASE_URL && env.KITH_API_KEY
-        ? { baseUrl: env.KITH_BASE_URL, apiKey: env.KITH_API_KEY }
+      env.KITH_BASE_URL && env.HEORTH_BASE_URL
+        ? { baseUrl: env.KITH_BASE_URL, audience: env.KITH_AUDIENCE }
         : null,
   };
 }

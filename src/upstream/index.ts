@@ -1,11 +1,13 @@
 import type { AppConfig } from '../config/env.js';
 import { createHeorthClient, type HeorthClient } from './heorth.js';
 import { createKithClient, type KithClient } from './kith.js';
+import { SatelliteTokenExchange } from './exchange.js';
 
 export * from './errors.js';
 export * from './http.js';
 export * from './heorth.js';
 export * from './kith.js';
+export * from './exchange.js';
 
 /**
  * The upstream clients available to a tool handler. A client is present exactly
@@ -19,9 +21,10 @@ export interface Upstreams {
 }
 
 /**
- * Runtime — the process-wide part of the upstream wiring: the validated config
- * and the `fetch` used to reach upstreams. The Heorth client itself is *not*
- * here: it is bound to a caller's key and therefore built per request.
+ * Runtime — the process-wide part of the upstream wiring: the validated config,
+ * the `fetch` used to reach upstreams, and the satellite token cache. Neither
+ * upstream *client* is here: both are bound to a caller's credential and are
+ * therefore built per request.
  *
  * Same `get*Runtime`/`set*Runtime` seam as Heorth's `src/modules/kith/runtime.ts`,
  * so tests install a fake-upstream-backed runtime and never touch the network.
@@ -29,8 +32,11 @@ export interface Upstreams {
 export interface UpstreamRuntime {
   config: AppConfig;
   fetch: typeof fetch;
-  /** Process-scoped because its credential is process-scoped (ADR 0002 Phase A). */
-  kith: KithClient | null;
+  /**
+   * Process-scoped because the *cache* is process-scoped (ADR 0009) — but every
+   * entry in it is keyed to one caller, and the client built from it is not.
+   */
+  exchange: SatelliteTokenExchange | null;
 }
 
 export function createUpstreamRuntime(
@@ -40,9 +46,17 @@ export function createUpstreamRuntime(
   return {
     config,
     fetch: fetchImpl,
-    kith: config.kith
-      ? createKithClient(config.kith, { timeoutMs: config.timeoutMs, fetch: fetchImpl })
-      : null,
+    // `config.kith` is non-null only when Heorth is configured too (see
+    // src/config/env.ts) — `kith.*` cannot authenticate without the exchange.
+    exchange:
+      config.kith && config.heorth
+        ? new SatelliteTokenExchange({
+            heorthBaseUrl: config.heorth.baseUrl,
+            audience: config.kith.audience,
+            timeoutMs: config.timeoutMs,
+            fetch: fetchImpl,
+          })
+        : null,
   };
 }
 
@@ -74,6 +88,14 @@ export function upstreamsForRequest(
       fetch: rt.fetch,
     });
   }
-  if (rt.kith) upstreams.kith = rt.kith;
+  // KithLedger is reached with a member token exchanged for *this* caller's
+  // credential (ADR 0009), so its client is per request too — and the exchange
+  // is lazy: no token is minted unless a `kith.*` tool is actually called.
+  if (rt.config.kith && rt.exchange && authorization) {
+    upstreams.kith = createKithClient(rt.config.kith, rt.exchange.credentialFor(authorization), {
+      timeoutMs: rt.config.timeoutMs,
+      fetch: rt.fetch,
+    });
+  }
   return upstreams;
 }

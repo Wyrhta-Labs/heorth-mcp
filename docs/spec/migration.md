@@ -60,11 +60,17 @@ replacement is green here.
    construction — keep that shape).
 2. **Upstream clients.** `src/upstream/heorth.ts` and `src/upstream/kith.ts`:
    typed REST clients, `{ error: { code, message } }` envelope handling, key
-   pass-through for Heorth and service key for KithLedger.
+   pass-through for Heorth and — since task B11 — a per-caller member token for
+   KithLedger, exchanged at Heorth by `src/upstream/exchange.ts` (ADR 0009). The
+   A2-era `kl_` service key and its `KITH_API_KEY` are gone; both clients are
+   now request-scoped, because both credentials belong to one caller.
+   **Done** (A2, revised by B11).
 3. **Port the Heorth tools**, area by area, handler bodies rewritten from
    direct service calls into REST calls. Zod input schemas transfer verbatim.
-   Port each area's tests alongside, against a faked upstream.
-4. **Port the KithLedger tools** (`kith.*`), same treatment.
+   Port each area's tests alongside, against a faked upstream. **Done** (A5) —
+   37 tools.
+4. **Port the KithLedger tools** (`kith.*`), same treatment. **Done** (B11) —
+   13 tools, so `buildRegistry` yields 50 with both upstreams configured.
 5. **Deploy** as a container in the meta repo's `deploy/` stack, alongside
    Heorth and KithLedger, and point a real MCP client at it.
 6. **Delete upstream.** Only now, and only per area once its tools are verified
@@ -73,7 +79,9 @@ replacement is green here.
      the `mcp` parameter from `HeorthModule.register` / `createApp` — a
      mechanical but wide change.
    - KithLedger: remove `src/mcp/`, the MCP tests, the stdio entry point and its
-     npm script, and `MCP_API_KEY` from config.
+     npm script, and `MCP_API_KEY` from config. Note its `src/mcp/auth.ts` (one
+     `kl_` key from env, one principal per process) has no successor here — the
+     caller's identity now arrives on every call as a verified member token.
    - wyrhta-core: drop `src/mcp/`, cut a new tag, bump both consumers.
 
 ## What must be true before step 6
@@ -93,6 +101,30 @@ replacement is green here.
 decoupled from the services; the SDK dependency out of two production services;
 a tool surface that provably cannot exceed the REST API.
 
-**Costs:** one more container; an extra network hop per tool call; `kith.*`
-loses per-member identity until ADR 0002 Phase B; tool changes that need new
-data become two-repo changes.
+**Costs:** one more container; an extra network hop per tool call; ~~`kith.*`
+loses per-member identity until ADR 0002 Phase B~~ — **no longer true since
+task B11**: `kith.*` carries the calling member's identity, at the price of
+Heorth becoming a runtime dependency of those tools (a cache miss costs one
+extra call, and a Heorth outage fails them with `IDENTITY_UNAVAILABLE` even when
+KithLedger is healthy); tool changes that need new data become two-repo changes.
+
+## `kith.*` auth after task B11
+
+```
+MCP client ──Bearer he_…──▶ heorth-mcp
+                              │  cache miss only:
+                              │  POST {HEORTH}/api/v1/auth/satellite-token
+                              │  Authorization: <the caller's own he_ header>
+                              │  { "audience": "kithledger" }
+                              ▼
+                            Heorth ── { data: { token, expires_in: 300, audience } }
+                              │
+heorth-mcp ──Bearer <that JWT>──▶ KithLedger  (verifies against Heorth's JWKS,
+                                               provisions the member just in time)
+```
+
+Cache rules, from ADR 0009 and implemented in `src/upstream/exchange.ts`: in
+memory only, keyed by `sha256(presented credential)` plus the audience, evicted
+at `exp - 30s`, never logged and never shared between callers. heorth-mcp holds
+no signing key and must never acquire one — it can only ask Heorth, with a
+credential the caller supplied.

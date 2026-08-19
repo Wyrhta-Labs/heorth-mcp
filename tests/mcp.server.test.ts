@@ -159,13 +159,30 @@ describe('per-request upstream binding', () => {
 
   it('exposes only the configured upstreams', () => {
     const fake = createFakeUpstream();
-    const kithOnly = createUpstreamRuntime(
-      loadConfig({ KITH_BASE_URL: 'http://kith:3000', KITH_API_KEY: 'kl_x' }),
+    const heorthOnly = createUpstreamRuntime(
+      loadConfig({ HEORTH_BASE_URL: 'http://heorth:3000' }),
       fake.fetch
     );
-    const upstreams = upstreamsForRequest(kithOnly, undefined);
 
-    expect(upstreams.heorth).toBeUndefined();
+    const upstreams = upstreamsForRequest(heorthOnly, 'Bearer he_x');
+    expect(upstreams.heorth).toBeDefined();
+    expect(upstreams.kith).toBeUndefined();
+  });
+
+  it('binds the KithLedger client to the caller too, and mints nothing eagerly', () => {
+    // Both clients are per request now: KithLedger is reached with a member
+    // token exchanged for THIS caller's credential (ADR 0009), so a
+    // process-scoped client would make one member's token serve another.
+    const fake = createFakeUpstream();
+    const both = createUpstreamRuntime(
+      loadConfig({ HEORTH_BASE_URL: 'http://heorth:3000', KITH_BASE_URL: 'http://kith:3000' }),
+      fake.fetch
+    );
+
+    const upstreams = upstreamsForRequest(both, 'Bearer he_x');
+    expect(upstreams.heorth).toBeDefined();
     expect(upstreams.kith).toBeDefined();
+    // The exchange is lazy: building the client calls nothing.
+    expect(fake.requests).toHaveLength(0);
   });
 });

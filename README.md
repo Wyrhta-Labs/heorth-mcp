@@ -13,10 +13,36 @@ MCP client ──Streamable HTTP──▶ heorth-mcp ──▶ Heorth REST      
 
 ## Status
 
-**Skeleton — no tools yet.** The MCP scaffold, HTTP transport, config, and the
-Heorth/KithLedger REST clients are in place; the tool surface itself is still
-being ported, so the server currently answers `tools/list` with an empty list.
-The MCP code still lives embedded in Heorth and KithLedger.
+**All 50 tools ported.** The 37 Heorth tools (`household.*`, `calendar.*`,
+`meals.*`, `library.*`, `inventory.*`, `tasks.*`, `feoh.*`) landed in task A5;
+the 13 `kith.*` tools in task B11. `tools/list` serves whatever the configured
+upstreams provide — both, one, or (with neither configured) nothing at all. The
+MCP code still lives embedded in Heorth and KithLedger and is deleted there only
+once the equivalent tool here is verified against the deployed container.
+
+## Configuration
+
+| Variable | Meaning |
+|---|---|
+| `HEORTH_BASE_URL` | Heorth's base URL. Unset -> the 37 Heorth tools are not registered. |
+| `KITH_BASE_URL` | KithLedger's base URL. Unset -> the 13 `kith.*` tools are not registered. **Requires `HEORTH_BASE_URL`** (see below) — set alone, it is a boot error. |
+| `KITH_AUDIENCE` | The satellite audience for exchanged tokens (default `kithledger`). Must match Heorth's `SATELLITE_AUDIENCES` and KithLedger's `SATELLITE_AUDIENCE`. |
+| `PORT` | Default `3200`. |
+| `UPSTREAM_TIMEOUT_MS` | Per upstream call, default `10000`. |
+
+**heorth-mcp holds no credential of its own — for either upstream.** Heorth
+calls carry the caller's `Bearer he_...` verbatim. KithLedger calls carry a
+short-lived member token that heorth-mcp exchanges at Heorth
+(`POST /api/v1/auth/satellite-token`, ADR 0009) using that same caller
+credential, cached in memory per caller for just under its 5-minute life. That
+is why `kith.*` needs both upstreams: Heorth is the identity authority, so with
+it unreachable the `kith.*` tools fail (`IDENTITY_UNAVAILABLE`) even when
+KithLedger is healthy.
+
+`KITH_API_KEY` is **gone**. KithLedger enforces per-member access control
+(ADR 0004) and none of its three `kl_` credential kinds is the calling member: a
+`member` key reads as the issuing account's own scope, a `household` key sees
+only the household slice, an `ops` key has no data access at all.
 
 - [`docs/spec/tool-surface.md`](docs/spec/tool-surface.md) — the 50-tool contract
   and its REST mapping

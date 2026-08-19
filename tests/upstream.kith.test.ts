@@ -1,21 +1,27 @@
 import { describe, it, expect } from 'vitest';
-import { KithClient, createKithClient, serviceKeyCredential } from '../src/upstream/kith.js';
+import { KithClient, createKithClient, type KithCredential } from '../src/upstream/kith.js';
 import { createFakeUpstream } from './helpers/fake-upstream.js';
 
-const CFG = { baseUrl: 'http://kith.test', apiKey: 'kl_service_key' };
+const CFG = { baseUrl: 'http://kith.test', audience: 'kithledger' };
+
+/** A stand-in for the satellite token exchange. */
+const staticCredential = (header: string): KithCredential => ({ authorization: () => header });
 
 describe('KithClient', () => {
-  it('authenticates with the configured service key', async () => {
+  it('presents the credential it was built with', async () => {
     const fake = createFakeUpstream({ body: { data: [] } });
-    await createKithClient(CFG, { fetch: fake.fetch }).get('/people', { search: 'ada' });
+    await createKithClient(CFG, staticCredential('Bearer member.jwt'), { fetch: fake.fetch }).get(
+      '/people',
+      { q: 'ada' }
+    );
 
-    expect(fake.requests[0]?.headers['Authorization']).toBe('Bearer kl_service_key');
-    expect(fake.requests[0]?.url).toBe('http://kith.test/api/v1/people?search=ada');
+    expect(fake.requests[0]?.headers['Authorization']).toBe('Bearer member.jwt');
+    expect(fake.requests[0]?.url).toBe('http://kith.test/api/v1/people?q=ada');
   });
 
-  it('resolves its credential per request — the seam ADR 0002 Phase B replaces', async () => {
-    // Task B11 swaps the static service key for a per-caller member JWT. Only
-    // the credential changes; the client and every tool stay as they are.
+  it('resolves its credential per request — the seam the token exchange plugs into', async () => {
+    // Task B11 put a Heorth-minted member token behind this seam. The client
+    // and every tool stayed exactly as they were; only the credential changed.
     const fake = createFakeUpstream({ body: {} }, { body: {} });
     const issued: string[] = [];
     let n = 0;
@@ -43,7 +49,9 @@ describe('KithClient', () => {
       { status: 409, body: { error: { code: 'DUPLICATE_PERSON', message: 'exists' } } },
       { status: 500, body: { message: 'boom' } }
     );
-    const client = createKithClient(CFG, { fetch: fake.fetch });
+    const client = createKithClient(CFG, staticCredential('Bearer member.jwt'), {
+      fetch: fake.fetch,
+    });
 
     await expect(client.post('/people', { name: 'Ada' })).rejects.toMatchObject({
       message: 'DUPLICATE_PERSON',
@@ -54,7 +62,10 @@ describe('KithClient', () => {
 
   it('classifies timeout and connection failure', async () => {
     const fake = createFakeUpstream({ hang: true }, { throws: new TypeError('fetch failed') });
-    const client = createKithClient(CFG, { fetch: fake.fetch, timeoutMs: 20 });
+    const client = createKithClient(CFG, staticCredential('Bearer member.jwt'), {
+      fetch: fake.fetch,
+      timeoutMs: 20,
+    });
 
     await expect(client.get('/reminders')).rejects.toMatchObject({ message: 'UPSTREAM_TIMEOUT' });
     await expect(client.get('/reminders')).rejects.toMatchObject({
@@ -62,17 +73,16 @@ describe('KithClient', () => {
     });
   });
 
-  it('never carries key material in an error message', async () => {
+  it('never carries credential material in an error message', async () => {
     const fake = createFakeUpstream({ status: 401, body: { error: { code: 'unauthorized' } } });
-    const error = await createKithClient(CFG, { fetch: fake.fetch })
+    const error = await createKithClient(CFG, staticCredential('Bearer member.jwt.secret'), {
+      fetch: fake.fetch,
+    })
       .get('/people')
       .catch((e: Error) => e);
 
     expect(error.message).toBe('tool error');
+    expect(error.message).not.toContain('member.jwt');
     expect(error.message).not.toContain('kl_');
-  });
-
-  it('serviceKeyCredential builds a Bearer header', async () => {
-    expect(await serviceKeyCredential('kl_x').authorization()).toBe('Bearer kl_x');
   });
 });

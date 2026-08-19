@@ -3,24 +3,23 @@ import { RestTransport, type QueryValue } from './http.js';
 
 /**
  * ── CREDENTIAL SEAM ─────────────────────────────────────────────────────────
- * How a `kith.*` call authenticates. Today (ADR 0002 Phase A) it is one `kl_`
- * service key for the whole process, so every `kith.*` tool acts as a single
- * service principal rather than as the calling member.
+ * How a `kith.*` call authenticates: with a **Heorth-issued member JWT**,
+ * exchanged per caller (ADR 0009, task B11).
  *
- * That changes: issue Wyrhta-Labs/wyrhta-labs#1 decision 9 / task B11 replaces
- * it with a member JWT minted per caller. This indirection is the only thing
- * that has to change when it does — the credential is resolved per request and
- * may be async, so a token exchange fits here without touching the client or
- * any tool. Nothing else in the repo may reach for `KITH_API_KEY`.
+ * There is no service key here any more. KithLedger enforces ADR 0004's
+ * per-member access control, and none of its three credential kinds is the
+ * calling member: a `member`-kinded `kl_` key reads as the *issuing account's*
+ * personal scope, a `household` one sees only the household slice, and an `ops`
+ * one has no data access at all. Only a token minted for the caller expresses
+ * "this member is asking".
+ *
+ * The credential is resolved per request and may be async — that is what lets
+ * `src/upstream/exchange.ts` sit behind this seam without the client or any
+ * tool knowing an exchange happened.
  */
 export interface KithCredential {
   /** The `Authorization` header value for one request. */
   authorization(): string | Promise<string>;
-}
-
-/** Phase A: the static `kl_` service key from `KITH_API_KEY`. */
-export function serviceKeyCredential(apiKey: string): KithCredential {
-  return { authorization: () => `Bearer ${apiKey}` };
 }
 
 export interface KithClientOptions {
@@ -30,7 +29,13 @@ export interface KithClientOptions {
   fetch?: typeof fetch;
 }
 
-/** Typed REST client for KithLedger's `/api/v1/*` surface. */
+/**
+ * Typed REST client for KithLedger's `/api/v1/*` surface.
+ *
+ * Request-scoped by construction, exactly like `HeorthClient`: its credential
+ * belongs to one caller, so hoisting an instance to process scope would make
+ * one member's token serve another member's call.
+ */
 export class KithClient {
   private readonly transport: RestTransport;
 
@@ -61,13 +66,19 @@ export class KithClient {
   }
 }
 
+/**
+ * Build a caller-bound KithLedger client. The credential comes from the
+ * satellite token exchange — see `src/upstream/index.ts`, which is the only
+ * place that pairs the two.
+ */
 export function createKithClient(
   cfg: KithUpstreamConfig,
+  credential: KithCredential,
   opts: { timeoutMs?: number; fetch?: typeof fetch } = {}
 ): KithClient {
   return new KithClient({
     baseUrl: cfg.baseUrl,
-    credential: serviceKeyCredential(cfg.apiKey),
+    credential,
     ...(opts.timeoutMs === undefined ? {} : { timeoutMs: opts.timeoutMs }),
     ...(opts.fetch === undefined ? {} : { fetch: opts.fetch }),
   });
