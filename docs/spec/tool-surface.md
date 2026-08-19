@@ -37,7 +37,7 @@ translates to — relative to `/api/v1` on the respective base URL.
 
 Auth: caller's `Bearer he_...`, passed through. Heorth's `requireAuth` resolves
 an `he_` API key to `{ userId, role }` (`src/wiring.ts`), so `requireRole` gates
-work identically for key-authenticated callers — see CLAUDE.md, "Auth".
+work identically for key-authenticated callers — see AGENTS.md, "Auth".
 
 ### household (2) — mounted at `/api/v1/household`, `/api/v1/members`, `/api/v1/auth`
 
@@ -99,7 +99,7 @@ work identically for key-authenticated callers — see CLAUDE.md, "Auth".
 Every write route is wrapped in `canWrite` = `requireRole('admin','adult')` plus
 the maintenance-admin quarantine on the acting principal. The tools' local
 `assertCanWrite` / `assertNotMaintenanceAdmin` calls are therefore **not**
-ported — see CLAUDE.md, "Auth".
+ported — see AGENTS.md, "Auth".
 
 | Tool | REST (verified) | Params | Notes |
 |---|---|---|---|

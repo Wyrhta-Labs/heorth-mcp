@@ -48,7 +48,7 @@ only the household slice, an `ops` key has no data access at all.
   and its REST mapping
 - [`docs/spec/migration.md`](docs/spec/migration.md) — what moves out of the
   upstream repos, in what order, and what must be true before each deletion
-- [`CLAUDE.md`](CLAUDE.md) — architecture, auth model, and conventions
+- [`AGENTS.md`](AGENTS.md) — architecture, auth model, and conventions
 
 Created by **ADR 0008 — MCP as a standalone container over REST** in the meta
 repo `Wyrhta-Labs/wyrhta-labs`.
