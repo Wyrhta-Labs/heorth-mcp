@@ -1,6 +1,7 @@
 {
   "name": "heorth-mcp",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "The household's single MCP server — a REST client over Heorth and KithLedger",
   "type": "module",
   "engines": {
