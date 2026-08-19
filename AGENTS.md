@@ -6,11 +6,10 @@ against an upstream service's **public REST API**.
 
 Node.js 22 + TypeScript, Hono, Zod, Vitest. No database, no ORM, no migrations.
 
-> **Status: all 50 tools ported** — 37 Heorth (task A5) and 13 `kith.*` (task
-> B11). The MCP code still lives embedded in Heorth (`src/mcp/`,
-> `src/**/mcp.ts`) and KithLedger (`src/mcp/`) and is removed from those repos
-> only once the equivalent tool here is green.
-> See [`docs/spec/migration.md`](docs/spec/migration.md).
+> All 50 tools are ported. The MCP code still lives embedded in Heorth
+> (`src/mcp/`, `src/**/mcp.ts`) and KithLedger (`src/mcp/`), and is removed
+> from those repos only once the equivalent tool here is green — see
+> [`docs/spec/migration.md`](docs/spec/migration.md).
 
 ## The one rule that shapes everything
 
@@ -53,7 +52,7 @@ heorth-mcp  ── HEORTH_BASE_URL ──▶  Heorth REST   /api/v1/*   (he_ key
   forwarded verbatim to Heorth. heorth-mcp never validates the key itself, holds
   no Heorth credential, and cannot act without a caller. Per-member permissions
   and Heorth's audit log stay intact end to end.
-- **KithLedger: exchanged member token** (ADR 0009, task B11). heorth-mcp holds
+- **KithLedger: exchanged member token** (ADR 0009). heorth-mcp holds
   **no** KithLedger credential. On the first `kith.*` call of a caller it posts
   the caller's own `Authorization` header to Heorth's
   `POST /api/v1/auth/satellite-token` with `{ "audience": "kithledger" }`, and
@@ -76,26 +75,23 @@ heorth-mcp  ── HEORTH_BASE_URL ──▶  Heorth REST   /api/v1/*   (he_ key
 - A missing or malformed `Authorization` header fails the request before any
   upstream call. Never log key material.
 
-**Settled (A1/A2 — these are decided, not open):**
+**Settled — decided, not open:**
 
 - **`initialize` and `tools/list` are unauthenticated; the key is demanded at
   `tools/call`.** This matches Heorth's existing MCP behaviour and is
   deliberate: a client may discover the surface before it holds a credential.
 - **`McpPrincipal.userId` is a SHA-256 fingerprint of the presented key**, used
   only for log correlation, and `role` is unset. heorth-mcp validates nothing
-  locally and must not assert an identity it did not verify.
-  **Verified (task A4):** Heorth's REST routes carry the guards themselves —
-  `requireRole('admin','adult')` on every feoh and inventory write, the
-  maintenance-admin quarantine on the acting principal, `assertCanMutate` on
-  calendar writes — and derive the actor from the authenticated caller
-  (`requireAuth` resolves an `he_` key to `{ userId, role }`). **No guard is
-  lost in the port: whoever ports `feoh.*` (or `inventory.*`) must not re-add a
-  local role check.** Likewise `household.whoami` has to go through
-  `GET /api/v1/auth/whoami` — the fingerprint is not a member id.
-- ~~**`KITH_BASE_URL` without `KITH_API_KEY` fails at boot.**~~ **Superseded by
-  task B11.** There is no `KITH_API_KEY` any more; the boot rule is now
-  **`KITH_BASE_URL` without `HEORTH_BASE_URL` fails at boot**, because the
-  credential is exchanged per request at Heorth rather than read from the
+  locally and must not assert an identity it did not verify. Heorth's REST
+  routes carry the guards themselves — `requireRole('admin','adult')` on every
+  feoh and inventory write, the maintenance-admin quarantine on the acting
+  principal, `assertCanMutate` on calendar writes — and derive the actor from
+  the authenticated caller (`requireAuth` resolves an `he_` key to
+  `{ userId, role }`). **Never re-add a local role check here.** Likewise
+  `household.whoami` goes through `GET /api/v1/auth/whoami` — the fingerprint
+  is not a member id.
+- **`KITH_BASE_URL` without `HEORTH_BASE_URL` fails at boot**, because the
+  member credential is exchanged per request at Heorth rather than read from the
   environment. Both upstreams, or no `kith.*` tools.
 
 ## Conventions
