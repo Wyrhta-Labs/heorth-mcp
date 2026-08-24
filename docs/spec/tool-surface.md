@@ -33,7 +33,7 @@ translates to — relative to `/api/v1` on the respective base URL.
   reshaping to do. The Notes column only calls this out where the reshaping is
   more than "unwrap `data`".
 
-## Heorth upstream (`HEORTH_BASE_URL`) — 37 tools
+## Heorth upstream (`HEORTH_BASE_URL`) — 43 tools
 
 Auth: caller's `Bearer he_...`, passed through. Heorth's `requireAuth` resolves
 an `he_` API key to `{ userId, role }` (`src/wiring.ts`), so `requireRole` gates
@@ -77,14 +77,20 @@ work identically for key-authenticated callers — see AGENTS.md, "Auth".
 | `library.list_connections` | `GET /library/connections` | — | Confirmed. Returns `{ data: connections }`; tool returned `{ connections }`. |
 | `library.sync_connection` | `POST /library/connections/:id/sync` | — | Confirmed. Errors: 404 `NOT_FOUND`, **502 `SYNC_FAILED`** on provider failure. Both match the domain-code convention and pass through. |
 
-### ethel (4) — mounted at `/api/v1/ethel`
+### ethel (10) — mounted at `/api/v1/ethel`
 
 | Tool | REST (verified) | Params | Notes |
 |---|---|---|---|
-| `ethel.list_assets` | `GET /ethel/assets` | query: `status` (`active`/`decommissioned`), `category`, `q`, `limit`, `offset` | Confirmed. The tool returned the raw `{ rows, total, limit, offset }`; REST splits it into `data` + `meta`. |
+| `ethel.list_assets` | `GET /ethel/assets` | query: `status` (`active`/`decommissioned`), `category`, `q`, `placeId`, `includeDescendants`, `hasFacility`, `servesPlaceId`, `limit`, `offset` | Confirmed. The tool returned the raw `{ rows, total, limit, offset }`; REST splits it into `data` + `meta`. The two boolean filters are sent as the strings `true`/`false`, because the route validates them with `z.enum(['true','false'])` — `z.coerce.boolean()` would read `false` as true. `includeDescendants` without `placeId` is a 400 `VALIDATION_ERROR` from the route; the rule is **not** duplicated here. |
 | `ethel.get_asset` | `GET /ethel/assets/:id` | — | Confirmed. 404 `NOT_FOUND` (the tool returned an `isError` "Item not found"). |
 | `ethel.record_asset` | `POST /ethel/assets` | body: `name`, `category`, `manufacturer`, `model`, `serialNumber`, `locationNote`, `notes`, `warrantyUntil`, `purchasePrice`, `purchaseDate` | Confirmed. The route is gated `requireRole('admin','adult')` — the tool's local `assertCanWrite` is **not** ported. 201. |
 | `ethel.decommission_asset` | `POST /ethel/assets/:id/decommission` | body: `date`, `reason` (`broken`/`sold`/`given_away`/`worn_out`/`lost`/`other`), `proceeds?` | Confirmed. Same role gate on the route. 409 `ALREADY_DECOMMISSIONED`, 404 `NOT_FOUND`. |
+| `ethel.list_places` | `GET /ethel/places` | — | Confirmed. The whole flat list, each row carrying `parentId`; no `meta`, so the tool answers `{ rows }`. |
+| `ethel.record_place` | `POST /ethel/places` | body: `name`, `kind` (`building`/`floor`/`room`/`outdoor`/`storage`), `parentId?`, `notes?` | Confirmed. 201. The cycle check, the six-deep cap and the name-unique-per-parent rule live upstream and arrive as 400 `PLACE_CYCLE` / 400 `PLACE_TOO_DEEP` / 409 `PLACE_NAME_TAKEN` / 400 `PLACE_NOT_FOUND`. **Not** re-implemented here. |
+| `ethel.update_place` | `PATCH /ethel/places/:id` | path: `id`; body: `name?`, `kind?`, `parentId?`, `notes?` | Confirmed. Same four place codes, plus 404 `NOT_FOUND`. |
+| `ethel.delete_place` | `DELETE /ethel/places/:id` | path: `id` | Confirmed. 409 `PLACE_HAS_CHILDREN`, 404 `NOT_FOUND`. Assets in the place are **unassigned, not deleted** (`ON DELETE SET NULL`); the tool result says so, because nothing else tells a conversational caller. |
+| `ethel.set_vehicle_details` | `PUT /ethel/assets/:id/vehicle` | path: `assetId`; body: `registration?`, `vin?`, `firstRegisteredOn?`, `odometer?`, `odometerReadAt?`, `serviceIntervalMonths?` | Confirmed. Upsert: 201 on create, 200 on replace — wholesale, not a merge. 409 `ASSET_DETAIL_CONFLICT` / `VEHICLE_REGISTRATION_TAKEN` / `VEHICLE_VIN_TAKEN`, 404 `NOT_FOUND`. `serviceIntervalMonths` is the manufacturer's stated interval and schedules nothing (ADR 0014: the routine is Weorc's). |
+| `ethel.set_facility_details` | `PUT /ethel/assets/:id/facility` | path: `assetId`; body: `kind` (`heating`/`water`/`electrical`/`solar`/`sewage`/`ventilation`/`network`/`other`), `commissionedOn?`, `serviceIntervalMonths?`, `servesPlaceIds?` | Confirmed. Upsert, same 201/200. `servesPlaceIds` replaces the set wholesale. 409 `ASSET_DETAIL_CONFLICT`, 400 `PLACE_NOT_FOUND`, 404 `NOT_FOUND`. Same note on `serviceIntervalMonths`. |
 
 ### tasks (3) — mounted at `/api/v1/tasks`
 
@@ -149,7 +155,7 @@ credential kinds is the calling member. Routers are mounted at
 
 ## Tools REST cannot express today
 
-**None.** All 50 tools are reachable over the existing REST surface as mapped
+**None.** All 56 tools are reachable over the existing REST surface as mapped
 above. The A3 change to `GET /api/v1/events` closed the only real gap
 (`calendar.list_upcoming`); verification found nothing else needing a new
 upstream endpoint.

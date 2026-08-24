@@ -71,6 +71,16 @@ export class HeorthClient {
   }
 
   /**
+   * `PUT` — the verb Heorth uses for the upsert routes that replace a row
+   * wholesale rather than merging into it (`/ethel/assets/:id/vehicle`,
+   * `/ethel/assets/:id/facility`). 201 on create, 200 on replace; both arrive
+   * as the same envelope.
+   */
+  put<T>(path: string, body?: unknown): Promise<T> {
+    return this.transport.request<T>({ method: 'PUT', path, body: body ?? {} });
+  }
+
+  /**
    * `GET` a route whose success body is plain text, not the JSON envelope
    * (`/feoh/export`). Errors still arrive as the envelope and are classified
    * identically to every other call.

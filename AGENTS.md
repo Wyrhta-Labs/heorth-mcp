@@ -6,7 +6,7 @@ against an upstream service's **public REST API**.
 
 Node.js 22 + TypeScript, Hono, Zod, Vitest. No database, no ORM, no migrations.
 
-> All 50 tools are ported. The MCP code still lives embedded in Heorth
+> All 56 tools are ported. The MCP code still lives embedded in Heorth
 > (`src/mcp/`, `src/**/mcp.ts`) and KithLedger (`src/mcp/`), and is removed
 > from those repos only once the equivalent tool here is green — see
 > [`docs/spec/migration.md`](docs/spec/migration.md).
@@ -34,7 +34,7 @@ heorth-mcp  ── HEORTH_BASE_URL ──▶  Heorth REST   /api/v1/*   (he_ key
             ── KITH_BASE_URL   ──▶  KithLedger REST /api/v1/* (exchanged member JWT)
 ```
 
-- **One process, both upstreams.** The 37 Heorth tools (`household.*`,
+- **One process, both upstreams.** The 43 Heorth tools (`household.*`,
   `calendar.*`, `meals.*`, `library.*`, `ethel.*`, `tasks.*`, `feoh.*`) and
   the 13 KithLedger tools (`kith.*`) are served from the same endpoint.
 - **Each upstream is optional** — with one asymmetry. With `HEORTH_BASE_URL`

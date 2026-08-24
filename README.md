@@ -7,13 +7,13 @@ against an upstream service's public REST API — so an MCP tool can only ever d
 what an authenticated household member could already do over HTTP.
 
 ```
-MCP client ──Streamable HTTP──▶ heorth-mcp ──▶ Heorth REST      (37 tools)
+MCP client ──Streamable HTTP──▶ heorth-mcp ──▶ Heorth REST      (43 tools)
                                            └─▶ KithLedger REST  (13 tools)
 ```
 
 ## Status
 
-**All 50 tools ported.** The 37 Heorth tools (`household.*`, `calendar.*`,
+**All 56 tools ported.** The 43 Heorth tools (`household.*`, `calendar.*`,
 `meals.*`, `library.*`, `ethel.*`, `tasks.*`, `feoh.*`) landed in task A5;
 the 13 `kith.*` tools in task B11. `tools/list` serves whatever the configured
 upstreams provide — both, one, or (with neither configured) nothing at all. The
@@ -24,7 +24,7 @@ once the equivalent tool here is verified against the deployed container.
 
 | Variable | Meaning |
 |---|---|
-| `HEORTH_BASE_URL` | Heorth's base URL. Unset -> the 37 Heorth tools are not registered. |
+| `HEORTH_BASE_URL` | Heorth's base URL. Unset -> the 43 Heorth tools are not registered. |
 | `KITH_BASE_URL` | KithLedger's base URL. Unset -> the 13 `kith.*` tools are not registered. **Requires `HEORTH_BASE_URL`** (see below) — set alone, it is a boot error. |
 | `KITH_AUDIENCE` | The satellite audience for exchanged tokens (default `kithledger`). Must match Heorth's `SATELLITE_AUDIENCES` and KithLedger's `SATELLITE_AUDIENCE`. |
 | `PORT` | Default `3200`. |

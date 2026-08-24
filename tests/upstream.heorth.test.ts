@@ -72,6 +72,35 @@ describe('HeorthClient', () => {
     expect(fake.requests[0]?.headers['Content-Type']).toBe('application/json');
   });
 
+  it('sends a PATCH with its JSON body', async () => {
+    const fake = createFakeUpstream({ body: { data: { id: 'p1' } } });
+    await client(fake).patch('/ethel/places/p1', { name: 'Scullery' });
+
+    expect(fake.requests[0]?.method).toBe('PATCH');
+    expect(fake.requests[0]?.url).toBe('http://heorth.test/api/v1/ethel/places/p1');
+    expect(fake.requests[0]?.body).toBe('{"name":"Scullery"}');
+  });
+
+  it('sends a PUT with its JSON body — the upsert verb, spelled out so a typo cannot reach production', async () => {
+    const fake = createFakeUpstream({ status: 201, body: { data: { assetId: 'a1' } } });
+    const res = await client(fake).put<{ data: { assetId: string } }>('/ethel/assets/a1/vehicle', {
+      registration: 'AB12 CDE',
+    });
+
+    expect(res.data.assetId).toBe('a1');
+    expect(fake.requests[0]?.method).toBe('PUT');
+    expect(fake.requests[0]?.url).toBe('http://heorth.test/api/v1/ethel/assets/a1/vehicle');
+    expect(fake.requests[0]?.body).toBe('{"registration":"AB12 CDE"}');
+    expect(fake.requests[0]?.headers['Content-Type']).toBe('application/json');
+  });
+
+  it('sends an empty JSON body when a PUT carries none', async () => {
+    const fake = createFakeUpstream({ body: { data: {} } });
+    await client(fake).put('/ethel/assets/a1/facility');
+
+    expect(fake.requests[0]?.body).toBe('{}');
+  });
+
   it('maps a well-formed upstream error code through as the tool error text', async () => {
     const fake = createFakeUpstream({
       status: 404,
