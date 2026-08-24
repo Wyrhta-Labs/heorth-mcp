@@ -53,7 +53,7 @@ jobs:
           # 22 to match the Dockerfile's node:22-alpine stages and the
           # `engines.node` floor. This is a different axis from the Node the
           # *actions* run on (set by the action majors pinned above).
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
