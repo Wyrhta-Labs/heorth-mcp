@@ -3,8 +3,8 @@ import type { HeorthClient } from '../upstream/heorth.js';
 import type { McpTool, McpToolResult } from '../mcp/types.js';
 
 /**
- * `inventory.*` — ported from Heorth's `src/modules/inventory/mcp.ts`, mounted
- * at `/api/v1/inventory`.
+ * `ethel.*` — ported from Heorth's former `src/modules/inventory/mcp.ts`,
+ * mounted at `/api/v1/ethel`.
  *
  * The embedded tool carried a local `assertCanWrite` role gate. It is **not**
  * ported: the REST routes are wrapped in `requireRole('admin','adult')`
@@ -30,13 +30,13 @@ function heorth(upstreams: { heorth?: HeorthClient }): HeorthClient {
   return client;
 }
 
-/** Mirrors Heorth's `decommissionReasons` (src/modules/inventory/validators.ts). */
+/** Mirrors Heorth's `decommissionReasons` (src/modules/ethel/validators.ts). */
 const decommissionReasons = ['broken', 'sold', 'given_away', 'worn_out', 'lost', 'other'] as const;
 
-export const inventoryTools: McpTool[] = [
+export const ethelTools: McpTool[] = [
   {
-    name: 'inventory.list_items',
-    description: 'List household inventory items (filter by status/category/search).',
+    name: 'ethel.list_assets',
+    description: 'List household assets (filter by status/category/search).',
     inputSchema: {
       status: z.enum(['active', 'decommissioned']).optional(),
       category: z.string().optional(),
@@ -52,7 +52,7 @@ export const inventoryTools: McpTool[] = [
         limit?: number;
         offset?: number;
       };
-      const res = await heorth(ctx.upstreams).get<Envelope<unknown[]>>('/inventory/items', {
+      const res = await heorth(ctx.upstreams).get<Envelope<unknown[]>>('/ethel/assets', {
         status: i.status,
         category: i.category,
         q: i.q,
@@ -70,42 +70,42 @@ export const inventoryTools: McpTool[] = [
     },
   },
   {
-    name: 'inventory.get_item',
-    description: 'Get one inventory item by id (lifecycle fields included).',
+    name: 'ethel.get_asset',
+    description: 'Get one asset by id (lifecycle fields included).',
     inputSchema: { id: z.string().uuid() },
     async handler(ctx, input) {
       // Divergence, deliberate: the embedded tool answered with an `isError`
       // "Item not found" result; REST 404s with `NOT_FOUND`, which passes
       // through as the tool error text.
       const res = await heorth(ctx.upstreams).get<Envelope<unknown>>(
-        `/inventory/items/${encodeURIComponent((input as { id: string }).id)}`
+        `/ethel/assets/${encodeURIComponent((input as { id: string }).id)}`
       );
       return result(res.data);
     },
   },
   {
-    name: 'inventory.record_item',
-    description: 'Create an inventory item (name required; purchase fields optional).',
+    name: 'ethel.record_asset',
+    description: 'Create an asset (name required; purchase fields optional).',
     inputSchema: {
       name: z.string().min(1),
       category: z.string().optional().nullable(),
       manufacturer: z.string().optional().nullable(),
       model: z.string().optional().nullable(),
       serialNumber: z.string().optional().nullable(),
-      location: z.string().optional().nullable(),
+      locationNote: z.string().optional().nullable(),
       notes: z.string().optional().nullable(),
       warrantyUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
       purchasePrice: z.number().nonnegative().optional().nullable(),
       purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
     },
     async handler(ctx, input) {
-      const res = await heorth(ctx.upstreams).post<Envelope<unknown>>('/inventory/items', input);
+      const res = await heorth(ctx.upstreams).post<Envelope<unknown>>('/ethel/assets', input);
       return result(res.data);
     },
   },
   {
-    name: 'inventory.decommission_item',
-    description: 'Decommission an item (date, reason; optional proceeds). Inventory fields only - link a sale transaction separately via feoh.link_item_cost.',
+    name: 'ethel.decommission_asset',
+    description: 'Decommission an asset (date, reason; optional proceeds). Asset fields only - link a sale transaction separately via feoh.link_item_cost.',
     inputSchema: {
       id: z.string().uuid(),
       date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -113,7 +113,7 @@ export const inventoryTools: McpTool[] = [
       proceeds: z.number().nonnegative().optional(),
     },
     async handler(ctx, input) {
-      // `id` addresses the item in the path and must not travel in the body.
+      // `id` addresses the asset in the path and must not travel in the body.
       const { id, ...rest } = input as {
         id: string;
         date: string;
@@ -123,7 +123,7 @@ export const inventoryTools: McpTool[] = [
       // 409 ALREADY_DECOMMISSIONED and 404 NOT_FOUND are raised by the route and
       // pass through as domain codes.
       const res = await heorth(ctx.upstreams).post<Envelope<unknown>>(
-        `/inventory/items/${encodeURIComponent(id)}/decommission`,
+        `/ethel/assets/${encodeURIComponent(id)}/decommission`,
         rest
       );
       return result(res.data);

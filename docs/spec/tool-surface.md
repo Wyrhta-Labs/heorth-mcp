@@ -77,14 +77,14 @@ work identically for key-authenticated callers — see AGENTS.md, "Auth".
 | `library.list_connections` | `GET /library/connections` | — | Confirmed. Returns `{ data: connections }`; tool returned `{ connections }`. |
 | `library.sync_connection` | `POST /library/connections/:id/sync` | — | Confirmed. Errors: 404 `NOT_FOUND`, **502 `SYNC_FAILED`** on provider failure. Both match the domain-code convention and pass through. |
 
-### inventory (4) — mounted at `/api/v1/inventory`
+### ethel (4) — mounted at `/api/v1/ethel`
 
 | Tool | REST (verified) | Params | Notes |
 |---|---|---|---|
-| `inventory.list_items` | `GET /inventory/items` | query: `status` (`active`/`decommissioned`), `category`, `q`, `limit`, `offset` | Confirmed. The tool returned the raw `{ rows, total, limit, offset }`; REST splits it into `data` + `meta`. |
-| `inventory.get_item` | `GET /inventory/items/:id` | — | Confirmed. 404 `NOT_FOUND` (the tool returned an `isError` "Item not found"). |
-| `inventory.record_item` | `POST /inventory/items` | body: `name`, `category`, `manufacturer`, `model`, `serialNumber`, `location`, `notes`, `warrantyUntil`, `purchasePrice`, `purchaseDate` | Confirmed. The route is gated `requireRole('admin','adult')` — the tool's local `assertCanWrite` is **not** ported. 201. |
-| `inventory.decommission_item` | `POST /inventory/items/:id/decommission` | body: `date`, `reason` (`broken`/`sold`/`given_away`/`worn_out`/`lost`/`other`), `proceeds?` | Confirmed. Same role gate on the route. 409 `ALREADY_DECOMMISSIONED`, 404 `NOT_FOUND`. |
+| `ethel.list_assets` | `GET /ethel/assets` | query: `status` (`active`/`decommissioned`), `category`, `q`, `limit`, `offset` | Confirmed. The tool returned the raw `{ rows, total, limit, offset }`; REST splits it into `data` + `meta`. |
+| `ethel.get_asset` | `GET /ethel/assets/:id` | — | Confirmed. 404 `NOT_FOUND` (the tool returned an `isError` "Item not found"). |
+| `ethel.record_asset` | `POST /ethel/assets` | body: `name`, `category`, `manufacturer`, `model`, `serialNumber`, `locationNote`, `notes`, `warrantyUntil`, `purchasePrice`, `purchaseDate` | Confirmed. The route is gated `requireRole('admin','adult')` — the tool's local `assertCanWrite` is **not** ported. 201. |
+| `ethel.decommission_asset` | `POST /ethel/assets/:id/decommission` | body: `date`, `reason` (`broken`/`sold`/`given_away`/`worn_out`/`lost`/`other`), `proceeds?` | Confirmed. Same role gate on the route. 409 `ALREADY_DECOMMISSIONED`, 404 `NOT_FOUND`. |
 
 ### tasks (3) — mounted at `/api/v1/tasks`
 

@@ -188,7 +188,7 @@ export const feohTools: McpTool[] = [
   {
     name: 'feoh.get_item_costs',
     description:
-      'Return the total-cost-of-ownership breakdown (capital, tier-2 costs, recurring, proceeds) for an inventory item.',
+      'Return the total-cost-of-ownership breakdown (capital, tier-2 costs, recurring, proceeds) for an asset recorded via ethel.record_asset.',
     inputSchema: { itemId: z.string().uuid() },
     async handler(ctx, input) {
       const { itemId } = input as { itemId: string };
@@ -222,7 +222,7 @@ export const feohTools: McpTool[] = [
   {
     name: 'feoh.link_item_cost',
     description:
-      'Link a transaction to an inventory item as a cost (purchase, disposal, repair, maintenance, accessory).',
+      'Link a transaction to an asset (see ethel.get_asset) as a cost (purchase, disposal, repair, maintenance, accessory).',
     inputSchema: {
       transactionId: z.string().uuid(),
       itemId: z.string().uuid(),

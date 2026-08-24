@@ -35,7 +35,7 @@ heorth-mcp  ── HEORTH_BASE_URL ──▶  Heorth REST   /api/v1/*   (he_ key
 ```
 
 - **One process, both upstreams.** The 37 Heorth tools (`household.*`,
-  `calendar.*`, `meals.*`, `library.*`, `inventory.*`, `tasks.*`, `feoh.*`) and
+  `calendar.*`, `meals.*`, `library.*`, `ethel.*`, `tasks.*`, `feoh.*`) and
   the 13 KithLedger tools (`kith.*`) are served from the same endpoint.
 - **Each upstream is optional** — with one asymmetry. With `HEORTH_BASE_URL`
   unset the Heorth tools are not registered; same for `KITH_BASE_URL` and
@@ -84,7 +84,7 @@ heorth-mcp  ── HEORTH_BASE_URL ──▶  Heorth REST   /api/v1/*   (he_ key
   only for log correlation, and `role` is unset. heorth-mcp validates nothing
   locally and must not assert an identity it did not verify. Heorth's REST
   routes carry the guards themselves — `requireRole('admin','adult')` on every
-  feoh and inventory write, the maintenance-admin quarantine on the acting
+  feoh and ethel write, the maintenance-admin quarantine on the acting
   principal, `assertCanMutate` on calendar writes — and derive the actor from
   the authenticated caller (`requireAuth` resolves an `he_` key to
   `{ userId, role }`). **Never re-add a local role check here.** Likewise

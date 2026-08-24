@@ -14,7 +14,7 @@ MCP client ──Streamable HTTP──▶ heorth-mcp ──▶ Heorth REST      
 ## Status
 
 **All 50 tools ported.** The 37 Heorth tools (`household.*`, `calendar.*`,
-`meals.*`, `library.*`, `inventory.*`, `tasks.*`, `feoh.*`) landed in task A5;
+`meals.*`, `library.*`, `ethel.*`, `tasks.*`, `feoh.*`) landed in task A5;
 the 13 `kith.*` tools in task B11. `tools/list` serves whatever the configured
 upstreams provide — both, one, or (with neither configured) nothing at all. The
 MCP code still lives embedded in Heorth and KithLedger and is deleted there only

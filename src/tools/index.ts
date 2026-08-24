@@ -4,7 +4,7 @@ import { householdTools } from './household.js';
 import { calendarTools } from './calendar.js';
 import { mealsTools } from './meals.js';
 import { libraryTools } from './library.js';
-import { inventoryTools } from './inventory.js';
+import { ethelTools } from './ethel.js';
 import { tasksTools } from './tasks.js';
 import { feohTools } from './feoh.js';
 import { kithTools } from './kith.js';
@@ -31,7 +31,7 @@ export function buildRegistry(config: AppConfig): McpTool[] {
       ...calendarTools,
       ...mealsTools,
       ...libraryTools,
-      ...inventoryTools,
+      ...ethelTools,
       ...tasksTools,
       ...feohTools
     );
