@@ -14,8 +14,9 @@ import { kithTools } from './kith.js';
  * neither configured this returns `[]` and the server serves an empty tool list
  * — a valid, running container (CLAUDE.md, "Each upstream is optional").
  *
- * Each `src/tools/<area>.ts` exports one registry array: 37 Heorth tools (task
- * A5) and 13 `kith.*` tools (task B11), 50 in all — see
+ * Each `src/tools/<area>.ts` exports one registry array: 43 Heorth tools (37
+ * ported in task A5, six more `ethel.*` added in task 13) and 13 `kith.*` tools
+ * (task B11), 56 in all — see
  * `docs/spec/tool-surface.md` and `docs/spec/migration.md`.
  *
  * `config.kith` is non-null only when *both* upstreams are configured, because

@@ -44,7 +44,7 @@ KithLedger is healthy.
 `member` key reads as the issuing account's own scope, a `household` key sees
 only the household slice, an `ops` key has no data access at all.
 
-- [`docs/spec/tool-surface.md`](docs/spec/tool-surface.md) — the 50-tool contract
+- [`docs/spec/tool-surface.md`](docs/spec/tool-surface.md) — the 56-tool contract
   and its REST mapping
 - [`docs/spec/migration.md`](docs/spec/migration.md) — what moves out of the
   upstream repos, in what order, and what must be true before each deletion

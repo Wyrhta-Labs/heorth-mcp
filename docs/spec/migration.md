@@ -70,7 +70,8 @@ replacement is green here.
    Port each area's tests alongside, against a faked upstream. **Done** (A5) —
    37 tools.
 4. **Port the KithLedger tools** (`kith.*`), same treatment. **Done** (B11) —
-   13 tools, so `buildRegistry` yields 50 with both upstreams configured.
+   13 tools, so `buildRegistry` yielded 50 with both upstreams configured
+   (56 today — `ethel.*` grew by six in task 13, after this migration step).
 5. **Deploy** as a container in the meta repo's `deploy/` stack, alongside
    Heorth and KithLedger, and point a real MCP client at it.
 6. **Delete upstream.** Only now, and only per area once its tools are verified
