@@ -118,6 +118,23 @@ describe('ethel.record_asset', () => {
     expect(keys).not.toContain('location');
   });
 
+  it('declares placeId, and forwards it, so an asset can be put in a place', async () => {
+    // Asserted against `inputSchema` as well as the body: the schema is the
+    // tool's contract with every client, so a capability the handler would
+    // happily forward is invisible until the schema declares it. Heorth's
+    // create validator accepts it (`baseAsset` in src/modules/ethel/validators.ts).
+    expect(Object.keys(tool('ethel.record_asset').inputSchema)).toContain('placeId');
+
+    const placeId = '44444444-4444-4444-8444-444444444444';
+    const { body } = await call(
+      'ethel.record_asset',
+      { name: 'Drill', placeId },
+      undefined,
+      { status: 201, body: { data: { id: 'it9' } } }
+    );
+    expect(body).toMatchObject({ placeId });
+  });
+
   it('accepts locationNote (the renamed location column)', async () => {
     const input = { name: 'Drill', locationNote: 'Garage shelf 3' };
     const { body } = await call('ethel.record_asset', input, undefined, {

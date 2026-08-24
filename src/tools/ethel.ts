@@ -154,6 +154,10 @@ export const ethelTools: McpTool[] = [
       manufacturer: z.string().optional().nullable(),
       model: z.string().optional().nullable(),
       serialNumber: z.string().optional().nullable(),
+      // Mirrors `placeId` in Heorth's `baseAsset` (src/modules/ethel/validators.ts),
+      // which the create route accepts: without it declared here, an asset can
+      // never be put in a place conversationally (ADR 0013 SS5).
+      placeId: z.string().uuid().optional().nullable(),
       locationNote: z.string().optional().nullable(),
       notes: z.string().optional().nullable(),
       warrantyUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
@@ -258,7 +262,7 @@ export const ethelTools: McpTool[] = [
   {
     name: 'ethel.delete_place',
     description:
-      'Delete a place. Assets that sat in it are UNASSIGNED, not deleted - they stay in the inventory with no place. A place that still has places inside it is refused (PLACE_HAS_CHILDREN); move or delete those first.',
+      'Delete a place. Assets that sat in it are UNASSIGNED, not deleted - they stay in the asset register with no place. A place that still has places inside it is refused (PLACE_HAS_CHILDREN); move or delete those first.',
     inputSchema: { id: z.string().uuid() },
     async handler(ctx, input) {
       const { id } = input as { id: string };
@@ -273,7 +277,7 @@ export const ethelTools: McpTool[] = [
         ...res.data,
         deleted: true,
         assets:
-          'Assets that were in this place have been unassigned, not deleted. They remain in the inventory with no place.',
+          'Assets that were in this place have been unassigned, not deleted. They remain in the asset register with no place.',
       });
     },
   },
