@@ -9,17 +9,17 @@ describe('tool registry', () => {
     expect(buildRegistry(loadConfig({}))).toHaveLength(0);
   });
 
-  it('registers the 43 Heorth tools alone when only Heorth is configured', () => {
+  it('registers the 50 Heorth tools alone when only Heorth is configured', () => {
     const tools = buildRegistry(loadConfig({ HEORTH_BASE_URL: 'http://heorth:3000' }));
 
-    expect(tools).toHaveLength(43);
+    expect(tools).toHaveLength(50);
     expect(tools.filter((t) => t.name.startsWith('kith.'))).toHaveLength(0);
   });
 
-  it('registers all 56 tools with both upstreams configured', () => {
+  it('registers all 63 tools with both upstreams configured', () => {
     const tools = buildRegistry(loadConfig(BOTH));
 
-    expect(tools).toHaveLength(56);
+    expect(tools).toHaveLength(63);
     expect(tools.filter((t) => t.name.startsWith('kith.'))).toHaveLength(13);
   });
 

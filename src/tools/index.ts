@@ -5,6 +5,7 @@ import { calendarTools } from './calendar.js';
 import { mealsTools } from './meals.js';
 import { libraryTools } from './library.js';
 import { ethelTools } from './ethel.js';
+import { weorcTools } from './weorc.js';
 import { tasksTools } from './tasks.js';
 import { feohTools } from './feoh.js';
 import { kithTools } from './kith.js';
@@ -14,9 +15,9 @@ import { kithTools } from './kith.js';
  * neither configured this returns `[]` and the server serves an empty tool list
  * — a valid, running container (CLAUDE.md, "Each upstream is optional").
  *
- * Each `src/tools/<area>.ts` exports one registry array: 43 Heorth tools (37
- * ported in task A5, six more `ethel.*` added in task 13) and 13 `kith.*` tools
- * (task B11), 56 in all — see
+ * Each `src/tools/<area>.ts` exports one registry array: 50 Heorth tools (43
+ * ported before Weorc, seven more `weorc.*` added in task 11) and 13 `kith.*`
+ * tools (task B11), 63 in all — see
  * `docs/spec/tool-surface.md` and `docs/spec/migration.md`.
  *
  * `config.kith` is non-null only when *both* upstreams are configured, because
@@ -33,6 +34,7 @@ export function buildRegistry(config: AppConfig): McpTool[] {
       ...mealsTools,
       ...libraryTools,
       ...ethelTools,
+      ...weorcTools,
       ...tasksTools,
       ...feohTools
     );
