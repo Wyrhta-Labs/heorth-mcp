@@ -33,7 +33,7 @@ translates to — relative to `/api/v1` on the respective base URL.
   reshaping to do. The Notes column only calls this out where the reshaping is
   more than "unwrap `data`".
 
-## Heorth upstream (`HEORTH_BASE_URL`) — 43 tools
+## Heorth upstream (`HEORTH_BASE_URL`) — 50 tools
 
 Auth: caller's `Bearer he_...`, passed through. Heorth's `requireAuth` resolves
 an `he_` API key to `{ userId, role }` (`src/wiring.ts`), so `requireRole` gates
@@ -91,6 +91,27 @@ work identically for key-authenticated callers — see AGENTS.md, "Auth".
 | `ethel.delete_place` | `DELETE /ethel/places/:id` | path: `id` | Confirmed. 409 `PLACE_HAS_CHILDREN`, 404 `NOT_FOUND`. Assets in the place are **unassigned, not deleted** (`ON DELETE SET NULL`); the tool result says so, because nothing else tells a conversational caller. |
 | `ethel.set_vehicle_details` | `PUT /ethel/assets/:id/vehicle` | path: `assetId`; body: `registration?`, `vin?`, `firstRegisteredOn?`, `odometer?`, `odometerReadAt?`, `serviceIntervalMonths?` | Confirmed. Upsert: 201 on create, 200 on replace — wholesale, not a merge. 409 `ASSET_DETAIL_CONFLICT` / `VEHICLE_REGISTRATION_TAKEN` / `VEHICLE_VIN_TAKEN`, 404 `NOT_FOUND`. `serviceIntervalMonths` is the manufacturer's stated interval and schedules nothing (ADR 0014: the routine is Weorc's). |
 | `ethel.set_facility_details` | `PUT /ethel/assets/:id/facility` | path: `assetId`; body: `kind` (`heating`/`water`/`electrical`/`solar`/`sewage`/`ventilation`/`network`/`other`), `commissionedOn?`, `serviceIntervalMonths?`, `servesPlaceIds?` | Confirmed. Upsert, same 201/200. `servesPlaceIds` replaces the set wholesale. 409 `ASSET_DETAIL_CONFLICT`, 400 `PLACE_NOT_FOUND`, 404 `NOT_FOUND`. Same note on `serviceIntervalMonths`. |
+
+### weorc (7) — mounted at `/api/v1/weorc`
+
+Verified against `Wyrhta-Labs/Heorth` branch `feat/weorc-v1` @ `5cf2055`
+(task 11, 2026-08-25). The document header's 2026-08-18 verification point
+still applies to the pre-Weorc surface.
+
+Weorc stores recurring chore definitions and history. It is **not** the day-to-day
+task list a member works from; Tasks remains the external task service's system
+of record. An occurrence with no linked task is normal when no task provider is
+connected, and it is still due and completable here.
+
+| Tool | REST (verified) | Params | Notes |
+|---|---|---|---|
+| `weorc.list_routines` | `GET /weorc/routines` | query: `active` (`true`/`false` as strings), `anchor_asset_id`, `anchor_place_id`, `owner_member_id`, `limit`, `offset` | Confirmed. REST returns `{ data: rows, meta: { total, limit, offset } }`; tool returns `{ rows, total, limit, offset }`. `active` is sent as the strings `true`/`false`, because the route validates it with `z.enum(['true','false'])`. |
+| `weorc.record_routine` | `POST /weorc/routines` | body: `name`, `notes?`, `mode` (`from_completion`/`fixed`), `intervalUnit` (`day`/`week`/`month`), `intervalCount`, `anchorDate`, `leadDays?`, `ownerMemberId?`, `anchorAssetId?`, `anchorPlaceId?` | Confirmed. Route is gated `requireRole('admin','adult')`; no local role check is ported. 201. Anchor rules live upstream and pass through as 400 `ANCHOR_CONFLICT`, 400 `ASSET_NOT_FOUND`, 400 `PLACE_NOT_FOUND`, or 400 `VALIDATION_ERROR`. |
+| `weorc.update_routine` | `PATCH /weorc/routines/:id` | path: `id`; body: same routine fields, all optional, plus `active?` | Confirmed. `id` is not sent in the body. The route returns the routine view plus `openOccurrenceUnchanged` when a projected open occurrence could not be moved locally. Errors: 404 `NOT_FOUND`, 400 `ANCHOR_CONFLICT`, 400 `ASSET_NOT_FOUND`, 400 `PLACE_NOT_FOUND`, 400 `VALIDATION_ERROR`. |
+| `weorc.delete_routine` | `DELETE /weorc/routines/:id` | path: `id` | Confirmed. Returns `{ deleted: true }`. Routines with terminal occurrence history cannot be deleted; upstream returns 409 `ROUTINE_HAS_HISTORY`. 404 `NOT_FOUND`. |
+| `weorc.list_due` | `GET /weorc/occurrences?status=due` | query: `routine_id`, `due_to` | Confirmed. The tool always requests `status=due` and returns `{ rows, total }` from REST's `{ data, meta: { total } }`. This is the due Weorc occurrence view, not today's task list. |
+| `weorc.complete_occurrence` | `POST /weorc/occurrences/:id/complete` | path: `id`; body: `completedAt?`, `note?` | Confirmed. Route is gated `requireRole('admin','adult')`; no local role check is ported. Returns `{ occurrence, next, projection }`; the tool adds `projectionOutcome` text so a conversational caller learns whether the local completion was written back to Tasks, failed with a provider reason, or had no linked task/provider. Errors: 409 `ALREADY_TERMINAL`, 404 `NOT_FOUND`, 400 `VALIDATION_ERROR`. |
+| `weorc.skip_occurrence` | `POST /weorc/occurrences/:id/skip` | path: `id`; body: `note?` | Confirmed. Route is gated `requireRole('admin','adult')`; no local role check is ported. Returns `{ occurrence, next, projection }`. Errors: 409 `ALREADY_TERMINAL`, 404 `NOT_FOUND`, 400 `VALIDATION_ERROR`. |
 
 ### tasks (3) — mounted at `/api/v1/tasks`
 
@@ -155,7 +176,7 @@ credential kinds is the calling member. Routers are mounted at
 
 ## Tools REST cannot express today
 
-**None.** All 56 tools are reachable over the existing REST surface as mapped
+**None.** All 63 tools are reachable over the existing REST surface as mapped
 above. The A3 change to `GET /api/v1/events` closed the only real gap
 (`calendar.list_upcoming`); verification found nothing else needing a new
 upstream endpoint.
@@ -177,7 +198,7 @@ repo, not upstream gaps:
 
 ## What changed in this file (task A4)
 
-Eleven of the 50 rows were wrong before verification:
+Eleven rows were wrong before verification:
 
 - **9 wrong endpoints:** all 5 `calendar.*` tools (`/calendar` → `/events`),
   `household.get_members` (`/household` → `/members`), `household.whoami`
