@@ -94,6 +94,10 @@ work identically for key-authenticated callers — see AGENTS.md, "Auth".
 
 ### weorc (7) — mounted at `/api/v1/weorc`
 
+Verified against `Wyrhta-Labs/Heorth` branch `feat/weorc-v1` @ `5cf2055`
+(task 11, 2026-08-25). The document header's 2026-08-18 verification point
+still applies to the pre-Weorc surface.
+
 Weorc stores recurring chore definitions and history. It is **not** the day-to-day
 task list a member works from; Tasks remains the external task service's system
 of record. An occurrence with no linked task is normal when no task provider is

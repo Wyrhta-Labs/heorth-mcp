@@ -60,6 +60,28 @@ describe('weorc tools', () => {
     expect(request!.url).toContain('active=false');
   });
 
+  it('sends list_routines filters with Heorth snake_case query names', async () => {
+    const { request } = await call(
+      'weorc.list_routines',
+      {
+        anchorAssetId: '11111111-1111-1111-1111-111111111111',
+        anchorPlaceId: '22222222-2222-2222-2222-222222222222',
+        ownerMemberId: '33333333-3333-3333-3333-333333333333',
+      },
+      undefined,
+      { body: { data: [], meta: { total: 0, limit: 50, offset: 0 } } }
+    );
+    const url = new URL(request!.url);
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      anchor_asset_id: '11111111-1111-1111-1111-111111111111',
+      anchor_place_id: '22222222-2222-2222-2222-222222222222',
+      owner_member_id: '33333333-3333-3333-3333-333333333333',
+    });
+    expect(url.searchParams.has('anchorAssetId')).toBe(false);
+    expect(url.searchParams.has('anchorPlaceId')).toBe(false);
+    expect(url.searchParams.has('ownerMemberId')).toBe(false);
+  });
+
   it('POSTs a routine body through unchanged', async () => {
     const input = {
       name: 'Put the bins out',
@@ -108,6 +130,26 @@ describe('weorc tools', () => {
     expect(request!.url).toContain('status=due');
   });
 
+  it('sends list_due filters with Heorth snake_case query names', async () => {
+    const { request } = await call(
+      'weorc.list_due',
+      {
+        routineId: '44444444-4444-4444-4444-444444444444',
+        dueTo: '2026-09-08',
+      },
+      undefined,
+      { body: { data: [], meta: { total: 0 } } }
+    );
+    const url = new URL(request!.url);
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      status: 'due',
+      routine_id: '44444444-4444-4444-4444-444444444444',
+      due_to: '2026-09-08',
+    });
+    expect(url.searchParams.has('routineId')).toBe(false);
+    expect(url.searchParams.has('dueTo')).toBe(false);
+  });
+
   it('complete_occurrence reports the projection outcome', async () => {
     // A conversational caller has no other way to learn that the completion was
     // recorded but the write-back to To Do failed.
@@ -124,7 +166,7 @@ describe('weorc tools', () => {
     expect(text).toContain('needs_reauth');
   });
 
-  it('skip_occurrence posts the note and reports the projection outcome', async () => {
+  it('skip_occurrence posts the note and returns the upstream projection object', async () => {
     const { request, body, text } = await call(
       'weorc.skip_occurrence',
       { id: 'o1', note: 'Away' },
