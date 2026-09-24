@@ -6,7 +6,7 @@ against an upstream service's **public REST API**.
 
 Node.js 22 + TypeScript, Hono, Zod, Vitest. No database, no ORM, no migrations.
 
-> All 63 embedded tools are ported; `gewrit.*` (2) is new — 65 in all. The MCP code still lives embedded in Heorth
+> All 56 embedded tools are ported; `weorc.*` (7) and `gewrit.*` (2) are new — 65 in all. The MCP code still lives embedded in Heorth
 > (`src/mcp/`, `src/**/mcp.ts`) and KithLedger (`src/mcp/`), and is removed
 > from those repos only once the equivalent tool here is green — see
 > [`docs/spec/migration.md`](docs/spec/migration.md).
