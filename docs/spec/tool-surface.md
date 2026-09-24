@@ -33,7 +33,7 @@ translates to — relative to `/api/v1` on the respective base URL.
   reshaping to do. The Notes column only calls this out where the reshaping is
   more than "unwrap `data`".
 
-## Heorth upstream (`HEORTH_BASE_URL`) — 50 tools
+## Heorth upstream (`HEORTH_BASE_URL`) — 52 tools
 
 Auth: caller's `Bearer he_...`, passed through. Heorth's `requireAuth` resolves
 an `he_` API key to `{ userId, role }` (`src/wiring.ts`), so `requireRole` gates
@@ -91,6 +91,17 @@ work identically for key-authenticated callers — see AGENTS.md, "Auth".
 | `ethel.delete_place` | `DELETE /ethel/places/:id` | path: `id` | Confirmed. 409 `PLACE_HAS_CHILDREN`, 404 `NOT_FOUND`. Assets in the place are **unassigned, not deleted** (`ON DELETE SET NULL`); the tool result says so, because nothing else tells a conversational caller. |
 | `ethel.set_vehicle_details` | `PUT /ethel/assets/:id/vehicle` | path: `assetId`; body: `registration?`, `vin?`, `firstRegisteredOn?`, `odometer?`, `odometerReadAt?`, `serviceIntervalMonths?` | Confirmed. Upsert: 201 on create, 200 on replace — wholesale, not a merge. 409 `ASSET_DETAIL_CONFLICT` / `VEHICLE_REGISTRATION_TAKEN` / `VEHICLE_VIN_TAKEN`, 404 `NOT_FOUND`. `serviceIntervalMonths` is the manufacturer's stated interval and schedules nothing (ADR 0014: the routine is Weorc's). |
 | `ethel.set_facility_details` | `PUT /ethel/assets/:id/facility` | path: `assetId`; body: `kind` (`heating`/`water`/`electrical`/`solar`/`sewage`/`ventilation`/`network`/`other`), `commissionedOn?`, `serviceIntervalMonths?`, `servesPlaceIds?` | Confirmed. Upsert, same 201/200. `servesPlaceIds` replaces the set wholesale. 409 `ASSET_DETAIL_CONFLICT`, 400 `PLACE_NOT_FOUND`, 404 `NOT_FOUND`. Same note on `serviceIntervalMonths`. |
+
+### gewrit (2) — mounted at `/api/v1/gewrit`
+
+Heorth's Gewrit module (ADR 0017). Optional per deployment: with `GEWRIT_PROVIDER` blank the routes are not mounted and both tools see `404 NOT_FOUND`.
+
+| Tool | REST | Input | Notes |
+|---|---|---|---|
+| `gewrit.list_documents` | `GET /gewrit/assets/:id/documents` or `GET /gewrit/places/:id/documents` | exactly one of `assetId`, `placeId` | REST returns `{ data: links, meta: { stale } }`; the tool returns `{ links, stale }`. Every member may read. 404 `ELEMENT_NOT_FOUND`. |
+| `gewrit.search` | `GET /gewrit/documents/search?q=` | `q` (2–200 chars) | Route is gated `requireRole('admin','adult')`; no local role check. Text-only hits, at most 25. 502 `PROVIDER_UNAVAILABLE` / `PROVIDER_AUTH` pass through. |
+
+No preview tool and no write tools in v1.
 
 ### weorc (7) — mounted at `/api/v1/weorc`
 
