@@ -30,13 +30,25 @@ describe('gewrit tool registry', () => {
 describe('gewrit tools', () => {
   it('lists an asset\'s documents and surfaces stale', async () => {
     const { request, payload } = await call('gewrit.list_documents', { assetId: ASSET }, {
-      status: 200, body: { data: [{ id: 'l1', role: 'manual' }], meta: { stale: true } },
+      status: 200, body: { data: [{ id: 'l1', role: 'manual' }], meta: { stale: true, staleReason: 'unavailable' } },
     });
     expect(request!.method).toBe('GET');
     expect(request!.url).toBe(`http://heorth.test/api/v1/gewrit/assets/${ASSET}/documents`);
     // HttpClient sends `Authorization` and the fake records keys verbatim.
     expect(request!.headers['Authorization']).toBe(CALLER);
-    expect(payload).toEqual({ links: [{ id: 'l1', role: 'manual' }], stale: true });
+    expect(payload).toEqual({ links: [{ id: 'l1', role: 'manual' }], stale: true, staleReason: 'unavailable' });
+  });
+
+  it('surfaces staleReason auth for a rejected credential, and null when not stale', async () => {
+    const auth = await call('gewrit.list_documents', { assetId: ASSET }, {
+      status: 200, body: { data: [], meta: { stale: true, staleReason: 'auth' } },
+    });
+    expect(auth.payload).toEqual({ links: [], stale: true, staleReason: 'auth' });
+
+    const fresh = await call('gewrit.list_documents', { assetId: ASSET }, {
+      status: 200, body: { data: [], meta: { stale: false, staleReason: null } },
+    });
+    expect(fresh.payload).toEqual({ links: [], stale: false, staleReason: null });
   });
 
   it('lists a place\'s documents', async () => {

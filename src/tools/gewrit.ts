@@ -31,7 +31,7 @@ export const gewritTools: McpTool[] = [
   {
     name: 'gewrit.list_documents',
     description:
-      'List the Paperless documents linked to one household asset or place — manuals, warranties, invoices, contracts, certificates — with role, note, document date and a link to open each in Paperless. Give exactly one of assetId or placeId. `stale: true` means Paperless was unreachable and the details are the last known ones.',
+      'List the Paperless documents linked to one household asset or place — manuals, warranties, invoices, contracts, certificates — with role, note, document date and a link to open each in Paperless. Give exactly one of assetId or placeId. `stale: true` means Paperless was unreachable and the details are the last known ones; `staleReason` says why — `auth` for a rejected credential, `unavailable` for any other outage, `null` when not stale.',
     inputSchema: {
       assetId: z.string().uuid().optional().describe('An Ethel asset id.'),
       placeId: z.string().uuid().optional().describe('An Ethel place id.'),
@@ -45,7 +45,12 @@ export const gewritTools: McpTool[] = [
         ? `/gewrit/assets/${i.assetId}/documents`
         : `/gewrit/places/${i.placeId}/documents`;
       const res = await heorth(ctx.upstreams).get<Envelope<unknown[]>>(path);
-      return result({ links: res.data, stale: res.meta?.['stale'] === true });
+      const staleReason = res.meta?.['staleReason'];
+      return result({
+        links: res.data,
+        stale: res.meta?.['stale'] === true,
+        staleReason: staleReason === 'auth' || staleReason === 'unavailable' ? staleReason : null,
+      });
     },
   },
   {

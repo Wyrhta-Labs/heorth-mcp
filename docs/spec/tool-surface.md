@@ -98,7 +98,7 @@ Heorth's Gewrit module (ADR 0017). Optional per deployment: with `GEWRIT_PROVIDE
 
 | Tool | REST | Input | Notes |
 |---|---|---|---|
-| `gewrit.list_documents` | `GET /gewrit/assets/:id/documents` or `GET /gewrit/places/:id/documents` | exactly one of `assetId`, `placeId` | REST returns `{ data: links, meta: { stale } }`; the tool returns `{ links, stale }`. Every member may read. 404 `ELEMENT_NOT_FOUND`. |
+| `gewrit.list_documents` | `GET /gewrit/assets/:id/documents` or `GET /gewrit/places/:id/documents` | exactly one of `assetId`, `placeId` | REST returns `{ data: links, meta: { stale, staleReason } }`; the tool returns `{ links, stale, staleReason }` (`'auth' \| 'unavailable' \| null`). Every member may read. 404 `ELEMENT_NOT_FOUND`. |
 | `gewrit.search` | `GET /gewrit/documents/search?q=` | `q` (2–200 chars) | Route is gated `requireRole('admin','adult')`; no local role check. Text-only hits, at most 25. 502 `PROVIDER_UNAVAILABLE` / `PROVIDER_AUTH` pass through. |
 
 No preview tool and no write tools in v1.
@@ -187,7 +187,7 @@ credential kinds is the calling member. Routers are mounted at
 
 ## Tools REST cannot express today
 
-**None.** All 63 tools are reachable over the existing REST surface as mapped
+**None.** All 65 tools are reachable over the existing REST surface as mapped
 above. The A3 change to `GET /api/v1/events` closed the only real gap
 (`calendar.list_upcoming`); verification found nothing else needing a new
 upstream endpoint.

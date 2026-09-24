@@ -15,7 +15,7 @@ MCP client ──Streamable HTTP──▶ heorth-mcp ──▶ Heorth REST      
 
 **65 tools in all.** The 52 Heorth tools (`household.*`, `calendar.*`,
 `meals.*`, `library.*`, `ethel.*`, `weorc.*`, `gewrit.*`, `tasks.*`, `feoh.*`)
-landed in task A5, except `weorc.*` (task 11) and `gewrit.*` (this task) —
+landed in task A5, except `weorc.*` (task 11) and `gewrit.*` (ADR 0017) —
 those two namespaces are new here, not ported; the other 56 embedded
 tools are ported. The 13 `kith.*` tools landed in task B11. `tools/list` serves whatever the configured
 upstreams provide — both, one, or (with neither configured) nothing at all. The
