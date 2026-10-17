@@ -6,7 +6,7 @@ against an upstream service's **public REST API**.
 
 Node.js 22 + TypeScript, Hono, Zod, Vitest. No database, no ORM, no migrations.
 
-> All 56 formerly embedded tools are ported; `weorc.*` (7) and `gewrit.*` (2) are new — 65 in all.
+> All 56 formerly embedded tools are ported; `weorc.*` (7) and `gewrit.*` (2) and `ethel.update_asset` are new — 66 in all.
 > heorth-mcp is the household's only MCP surface: the embedded MCP code is gone
 > from Heorth, KithLedger and wyrhta-core (August 2026) — see
 > [`docs/spec/migration.md`](docs/spec/migration.md).
@@ -34,7 +34,7 @@ heorth-mcp  ── HEORTH_BASE_URL ──▶  Heorth REST   /api/v1/*   (he_ key
             ── KITH_BASE_URL   ──▶  KithLedger REST /api/v1/* (exchanged member JWT)
 ```
 
-- **One process, both upstreams.** The 52 Heorth tools (`household.*`,
+- **One process, both upstreams.** The 53 Heorth tools (`household.*`,
   `calendar.*`, `meals.*`, `library.*`, `ethel.*`, `weorc.*`, `gewrit.*`,
   `tasks.*`, `feoh.*`) and the 13 KithLedger tools (`kith.*`) are served from
   the same endpoint.

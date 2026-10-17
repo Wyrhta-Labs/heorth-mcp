@@ -34,7 +34,7 @@ translates to — relative to `/api/v1` on the respective base URL.
   reshaping to do. The Notes column only calls this out where the reshaping is
   more than "unwrap `data`".
 
-## Heorth upstream (`HEORTH_BASE_URL`) — 52 tools
+## Heorth upstream (`HEORTH_BASE_URL`) — 53 tools
 
 Auth: caller's `Bearer he_...`, passed through. Heorth's `requireAuth` resolves
 an `he_` API key to `{ userId, role }` (`src/wiring.ts`), so `requireRole` gates
@@ -78,13 +78,14 @@ work identically for key-authenticated callers — see AGENTS.md, "Auth".
 | `library.list_connections` | `GET /library/connections` | — | Confirmed. Returns `{ data: connections }`; tool returned `{ connections }`. |
 | `library.sync_connection` | `POST /library/connections/:id/sync` | — | Confirmed. Errors: 404 `NOT_FOUND`, **502 `SYNC_FAILED`** on provider failure. Both match the domain-code convention and pass through. |
 
-### ethel (10) — mounted at `/api/v1/ethel`
+### ethel (11) — mounted at `/api/v1/ethel`
 
 | Tool | REST (verified) | Params | Notes |
 |---|---|---|---|
 | `ethel.list_assets` | `GET /ethel/assets` | query: `status` (`active`/`decommissioned`), `category`, `q`, `placeId`, `includeDescendants`, `hasFacility`, `servesPlaceId`, `limit`, `offset` | Confirmed. The tool returned the raw `{ rows, total, limit, offset }`; REST splits it into `data` + `meta`. The two boolean filters are sent as the strings `true`/`false`, because the route validates them with `z.enum(['true','false'])` — `z.coerce.boolean()` would read `false` as true. `includeDescendants` without `placeId` is a 400 `VALIDATION_ERROR` from the route; the rule is **not** duplicated here. |
 | `ethel.get_asset` | `GET /ethel/assets/:id` | — | Confirmed. 404 `NOT_FOUND` (the tool returned an `isError` "Item not found"). |
 | `ethel.record_asset` | `POST /ethel/assets` | body: `name`, `category`, `manufacturer`, `model`, `serialNumber`, `placeId`, `locationNote`, `notes`, `warrantyUntil`, `purchasePrice`, `purchaseDate` | Confirmed. The route is gated `requireRole('admin','adult')` — the tool's local `assertCanWrite` is **not** ported. 201. `placeId` (uuid, optional/nullable) mirrors `baseAsset` in Heorth's `src/modules/ethel/validators.ts`, which the create route accepts; without it declared, first-time setup of a house could create places but never put an asset in one (ADR 0013 §5). |
+| `ethel.update_asset` | `PATCH /ethel/assets/:id` | path: `id`; body: any of `record_asset`'s fields, `reactivate?` | New here (heorth-mcp#1): without it an asset could be placed at creation but never moved. Same role gate on the route. `reactivate: true` becomes the three lifecycle fields nulled together, the only form Heorth's `updateAssetSchema` accepts; the tool cannot send a partial trio. 409 `DISPOSAL_LINK_EXISTS` (a sale transaction is still linked) and 400 `PLACE_NOT_FOUND` pass through, 404 `NOT_FOUND`. |
 | `ethel.decommission_asset` | `POST /ethel/assets/:id/decommission` | body: `date`, `reason` (`broken`/`sold`/`given_away`/`worn_out`/`lost`/`other`), `proceeds?` | Confirmed. Same role gate on the route. 409 `ALREADY_DECOMMISSIONED`, 404 `NOT_FOUND`. |
 | `ethel.list_places` | `GET /ethel/places` | — | Confirmed. The whole flat list, each row carrying `parentId`; no `meta`, so the tool answers `{ rows }`. |
 | `ethel.record_place` | `POST /ethel/places` | body: `name`, `kind` (`building`/`floor`/`room`/`outdoor`/`storage`), `parentId?`, `notes?` | Confirmed. 201. The cycle check, the six-deep cap and the name-unique-per-parent rule live upstream and arrive as 400 `PLACE_CYCLE` / 400 `PLACE_TOO_DEEP` / 409 `PLACE_NAME_TAKEN` / 400 `PLACE_NOT_FOUND`. **Not** re-implemented here. |
@@ -188,7 +189,7 @@ credential kinds is the calling member. Routers are mounted at
 
 ## Tools REST cannot express today
 
-**None.** All 65 tools are reachable over the existing REST surface as mapped
+**None.** All 66 tools are reachable over the existing REST surface as mapped
 above. The A3 change to `GET /api/v1/events` closed the only real gap
 (`calendar.list_upcoming`); verification found nothing else needing a new
 upstream endpoint.

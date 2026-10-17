@@ -7,17 +7,17 @@ against an upstream service's public REST API — so an MCP tool can only ever d
 what an authenticated household member could already do over HTTP.
 
 ```
-MCP client ──Streamable HTTP──▶ heorth-mcp ──▶ Heorth REST      (52 tools)
+MCP client ──Streamable HTTP──▶ heorth-mcp ──▶ Heorth REST      (53 tools)
                                            └─▶ KithLedger REST  (13 tools)
 ```
 
 ## Status
 
-**65 tools in all.** The 52 Heorth tools (`household.*`, `calendar.*`,
+**66 tools in all.** The 53 Heorth tools (`household.*`, `calendar.*`,
 `meals.*`, `library.*`, `ethel.*`, `weorc.*`, `gewrit.*`, `tasks.*`, `feoh.*`)
-landed in task A5, except `weorc.*` (task 11) and `gewrit.*` (ADR 0017) —
-those two namespaces are new here, not ported; the other 56 embedded
-tools are ported. The 13 `kith.*` tools landed in task B11. `tools/list` serves whatever the configured
+landed in task A5, except `weorc.*` (task 11), `gewrit.*` (ADR 0017) and
+`ethel.update_asset` (heorth-mcp#1) — those are new here, not ported; the
+other 56 embedded tools are ported. The 13 `kith.*` tools landed in task B11. `tools/list` serves whatever the configured
 upstreams provide — both, one, or (with neither configured) nothing at all.
 heorth-mcp is the only MCP surface: the embedded MCP servers were deleted from
 Heorth (`6aabb1a`), KithLedger (`4cc1ce6`) and wyrhta-core (v0.3.0) in
@@ -27,7 +27,7 @@ August 2026, and both services are REST-only.
 
 | Variable | Meaning |
 |---|---|
-| `HEORTH_BASE_URL` | Heorth's base URL. Unset -> the 52 Heorth tools are not registered. |
+| `HEORTH_BASE_URL` | Heorth's base URL. Unset -> the 53 Heorth tools are not registered. |
 | `KITH_BASE_URL` | KithLedger's base URL. Unset -> the 13 `kith.*` tools are not registered. **Requires `HEORTH_BASE_URL`** (see below) — set alone, it is a boot error. |
 | `KITH_AUDIENCE` | The satellite audience for exchanged tokens (default `kithledger`). Must match Heorth's `SATELLITE_AUDIENCES` and KithLedger's `SATELLITE_AUDIENCE`. |
 | `PORT` | Default `3200`. |
@@ -47,7 +47,7 @@ KithLedger is healthy.
 `member` key reads as the issuing account's own scope, a `household` key sees
 only the household slice, an `ops` key has no data access at all.
 
-- [`docs/spec/tool-surface.md`](docs/spec/tool-surface.md) — the 65-tool contract
+- [`docs/spec/tool-surface.md`](docs/spec/tool-surface.md) — the 66-tool contract
   and its REST mapping
 - [`docs/spec/migration.md`](docs/spec/migration.md) — what moves out of the
   upstream repos, in what order, and what must be true before each deletion

@@ -170,6 +170,52 @@ export const ethelTools: McpTool[] = [
     },
   },
   {
+    name: 'ethel.update_asset',
+    description:
+      'Change an asset: rename it, fix its details, or move it to another place (placeId; null takes it out of any place). reactivate: true brings a decommissioned asset back into service; Heorth refuses that with DISPOSAL_LINK_EXISTS while a sale transaction is linked to it. To decommission, use ethel.decommission_asset.',
+    inputSchema: {
+      id: z.string().uuid(),
+      // `record_asset`'s fields, all optional: Heorth's `updateAssetSchema` is
+      // `baseAsset.partial()` (src/modules/ethel/validators.ts).
+      name: z.string().min(1).optional(),
+      category: z.string().optional().nullable(),
+      manufacturer: z.string().optional().nullable(),
+      model: z.string().optional().nullable(),
+      serialNumber: z.string().optional().nullable(),
+      placeId: z
+        .string()
+        .uuid()
+        .optional()
+        .nullable()
+        .describe('The place to move the asset to; null takes it out of any place.'),
+      locationNote: z.string().optional().nullable(),
+      notes: z.string().optional().nullable(),
+      warrantyUntil: dateOnly.optional().nullable(),
+      purchasePrice: z.number().nonnegative().optional().nullable(),
+      purchaseDate: dateOnly.optional().nullable(),
+      reactivate: z
+        .boolean()
+        .optional()
+        .describe('true brings a decommissioned asset back into service.'),
+    },
+    async handler(ctx, input) {
+      // `id` addresses the asset in the path and must not travel in the body.
+      const { id, reactivate, ...rest } = input as { id: string; reactivate?: boolean };
+      // Heorth takes a reactivation only as all three lifecycle fields nulled
+      // together, so one flag stands in for the trio and a partial one cannot
+      // be sent. Whether the asset may be reactivated stays Heorth's call
+      // (409 DISPOSAL_LINK_EXISTS passes through).
+      const body = reactivate
+        ? { ...rest, decommissionedAt: null, decommissionReason: null, disposalProceeds: null }
+        : rest;
+      const res = await heorth(ctx.upstreams).patch<Envelope<unknown>>(
+        `/ethel/assets/${encodeURIComponent(id)}`,
+        body
+      );
+      return result(res.data);
+    },
+  },
+  {
     name: 'ethel.decommission_asset',
     description: 'Decommission an asset (date, reason; optional proceeds). Asset fields only - link a sale transaction separately via feoh.link_item_cost.',
     inputSchema: {

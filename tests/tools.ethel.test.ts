@@ -35,11 +35,12 @@ async function call(
 }
 
 describe('ethel tool registry', () => {
-  it('exposes the ten frozen tool names', () => {
+  it('exposes the eleven tool names (frozen once shipped)', () => {
     expect(ethelTools.map((t) => t.name)).toEqual([
       'ethel.list_assets',
       'ethel.get_asset',
       'ethel.record_asset',
+      'ethel.update_asset',
       'ethel.decommission_asset',
       'ethel.list_places',
       'ethel.record_place',
@@ -163,6 +164,72 @@ describe('ethel.record_asset', () => {
         body: { error: { code: 'FORBIDDEN', message: 'Not allowed' } },
       })
     ).rejects.toThrow('FORBIDDEN');
+  });
+});
+
+describe('ethel.update_asset', () => {
+  const ID = '66666666-6666-6666-6666-666666666666';
+  const PLACE = '77777777-7777-7777-7777-777777777777';
+
+  it('PATCHes /ethel/assets/:id with the id in the path, not the body', async () => {
+    const { request, body } = await call(
+      'ethel.update_asset',
+      { id: ID, placeId: PLACE },
+      { userId: 'fingerprint' },
+      { body: { data: { id: ID, placeId: PLACE } } }
+    );
+    expect(request!.method).toBe('PATCH');
+    expect(new URL(request!.url).pathname).toBe(`/api/v1/ethel/assets/${ID}`);
+    expect(body).toEqual({ placeId: PLACE });
+  });
+
+  it('sends a null placeId through, which takes the asset out of its place', async () => {
+    const { body } = await call('ethel.update_asset', { id: ID, placeId: null }, undefined, {
+      body: { data: { id: ID } },
+    });
+    expect(body).toEqual({ placeId: null });
+  });
+
+  it('turns reactivate into the all-null lifecycle trio Heorth demands', async () => {
+    const { body } = await call('ethel.update_asset', { id: ID, reactivate: true }, undefined, {
+      body: { data: { id: ID } },
+    });
+    expect(body).toEqual({ decommissionedAt: null, decommissionReason: null, disposalProceeds: null });
+  });
+
+  it('keeps the other fields when reactivating in the same call', async () => {
+    const { body } = await call('ethel.update_asset', { id: ID, reactivate: true, placeId: PLACE }, undefined, {
+      body: { data: { id: ID } },
+    });
+    expect(body).toEqual({
+      placeId: PLACE,
+      decommissionedAt: null,
+      decommissionReason: null,
+      disposalProceeds: null,
+    });
+  });
+
+  it('does not gate on the local principal role — the route carries requireRole', async () => {
+    const { request } = await call('ethel.update_asset', { id: ID, name: 'Drill' }, { userId: 'fingerprint', role: 'child' }, {
+      body: { data: { id: ID } },
+    });
+    expect(request?.method).toBe('PATCH');
+  });
+
+  it('sends no lifecycle field unless reactivate is true', async () => {
+    const { body } = await call('ethel.update_asset', { id: ID, name: 'Drill', reactivate: false }, undefined, {
+      body: { data: { id: ID } },
+    });
+    expect(body).toEqual({ name: 'Drill' });
+  });
+
+  it('passes 409 DISPOSAL_LINK_EXISTS through, because that guard is upstream, not here', async () => {
+    await expect(
+      call('ethel.update_asset', { id: ID, reactivate: true }, undefined, {
+        status: 409,
+        body: { error: { code: 'DISPOSAL_LINK_EXISTS', message: 'Unlink the disposal transaction before reactivating' } },
+      })
+    ).rejects.toThrow('DISPOSAL_LINK_EXISTS');
   });
 });
 

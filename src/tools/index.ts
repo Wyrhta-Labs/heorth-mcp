@@ -16,9 +16,10 @@ import { kithTools } from './kith.js';
  * neither configured this returns `[]` and the server serves an empty tool list
  * — a valid, running container (CLAUDE.md, "Each upstream is optional").
  *
- * Each `src/tools/<area>.ts` exports one registry array: 52 Heorth tools (43
+ * Each `src/tools/<area>.ts` exports one registry array: 53 Heorth tools (43
  * ported before Weorc, seven `weorc.*` added in task 11, two `gewrit.*` for
- * ADR 0017) and 13 `kith.*` tools, 65 in all — see
+ * ADR 0017, `ethel.update_asset` for heorth-mcp#1) and 13 `kith.*` tools, 66
+ * in all — see
  * `docs/spec/tool-surface.md` and `docs/spec/migration.md`.
  *
  * `config.kith` is non-null only when *both* upstreams are configured, because
