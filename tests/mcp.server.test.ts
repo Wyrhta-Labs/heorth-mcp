@@ -57,7 +57,7 @@ describe('MCP over HTTP', () => {
 
     const init = await rpc(handler, 'Bearer he_x', INIT);
     expect(init.status).toBe(200);
-    expect(init.json.result.serverInfo).toEqual({ name: 'heorth-mcp', version: '0.1.0' });
+    expect(init.json.result.serverInfo).toEqual({ name: 'heorth-mcp', version: '0.2.0' });
 
     const list = await rpc(handler, 'Bearer he_x', { jsonrpc: '2.0', id: 2, method: 'tools/list' });
     expect(list.json.result.tools).toEqual([]);
