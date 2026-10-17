@@ -36,7 +36,7 @@ export function buildMcpServer(): { fetch(req: Request): Promise<Response> } {
         buildRegistry(runtime.config),
         createPassThroughAuthAdapter(authorization),
         upstreams,
-        { name: 'heorth-mcp', version: '0.2.0' }
+        { name: 'heorth-mcp', version: '0.2.1' }
       );
       const transport = new WebStandardStreamableHTTPServerTransport();
       await server.connect(transport);

@@ -31,7 +31,7 @@ export function createMcpServer(
   registry: McpTool[],
   authAdapter: AuthAdapter,
   upstreams: Upstreams,
-  info: { name: string; version: string } = { name: 'heorth-mcp', version: '0.2.0' }
+  info: { name: string; version: string } = { name: 'heorth-mcp', version: '0.2.1' }
 ): McpServer {
   const server = new McpServer(info);
 
