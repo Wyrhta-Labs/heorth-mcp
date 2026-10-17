@@ -6,9 +6,9 @@ against an upstream service's **public REST API**.
 
 Node.js 22 + TypeScript, Hono, Zod, Vitest. No database, no ORM, no migrations.
 
-> All 56 embedded tools are ported; `weorc.*` (7) and `gewrit.*` (2) are new — 65 in all. The MCP code still lives embedded in Heorth
-> (`src/mcp/`, `src/**/mcp.ts`) and KithLedger (`src/mcp/`), and is removed
-> from those repos only once the equivalent tool here is green — see
+> All 56 formerly embedded tools are ported; `weorc.*` (7) and `gewrit.*` (2) are new — 65 in all.
+> heorth-mcp is the household's only MCP surface: the embedded MCP code is gone
+> from Heorth, KithLedger and wyrhta-core (August 2026) — see
 > [`docs/spec/migration.md`](docs/spec/migration.md).
 
 ## The one rule that shapes everything

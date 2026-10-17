@@ -3,9 +3,10 @@
 **Status:** verified · **Verified:** 2026-08-18 (task A4) against
 `Wyrhta-Labs/Heorth` @ `46666d7` and `Wyrhta-Labs/KithLedger` @ `main`.
 
-**Source of truth for behaviour:** the MCP code still embedded in Heorth
+**Source of truth for behaviour:** the MCP code then embedded in Heorth
 (`src/household/mcp.ts`, `src/modules/*/mcp.ts`) and KithLedger
-(`src/mcp/tools/*.ts`). **Source of truth for the mapping:** each module's
+(`src/mcp/tools/*.ts`) — deleted since (Heorth `6aabb1a`, KithLedger
+`4cc1ce6`); read it from those repos' history. **Source of truth for the mapping:** each module's
 `index.ts` (mount prefix), `routes.ts` (path, guards, response shape) and
 `validators.ts` (exact query/body field names).
 

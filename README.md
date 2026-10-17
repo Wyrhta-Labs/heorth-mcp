@@ -18,9 +18,10 @@ MCP client ──Streamable HTTP──▶ heorth-mcp ──▶ Heorth REST      
 landed in task A5, except `weorc.*` (task 11) and `gewrit.*` (ADR 0017) —
 those two namespaces are new here, not ported; the other 56 embedded
 tools are ported. The 13 `kith.*` tools landed in task B11. `tools/list` serves whatever the configured
-upstreams provide — both, one, or (with neither configured) nothing at all. The
-MCP code still lives embedded in Heorth and KithLedger and is deleted there only
-once the equivalent tool here is verified against the deployed container.
+upstreams provide — both, one, or (with neither configured) nothing at all.
+heorth-mcp is the only MCP surface: the embedded MCP servers were deleted from
+Heorth (`6aabb1a`), KithLedger (`4cc1ce6`) and wyrhta-core (v0.3.0) in
+August 2026, and both services are REST-only.
 
 ## Configuration
 

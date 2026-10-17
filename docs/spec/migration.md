@@ -1,6 +1,11 @@
 # Spec — migrating MCP out of Heorth and KithLedger
 
-**Status:** draft · **Decision:** ADR 0008 (meta repo `Wyrhta-Labs/wyrhta-labs`)
+**Status:** steps 1–4 and 6 done; step 5 (real deployment) open · **Decision:** ADR 0008 (meta repo `Wyrhta-Labs/wyrhta-labs`)
+
+> **Historical record.** Step 6 ran in August 2026 — Heorth `6aabb1a`,
+> KithLedger `4cc1ce6`, wyrhta-core v0.3.0 — *before* step 5, against the
+> dev/demo stacks rather than a deployed container. The "What exists today"
+> section below describes the pre-migration state.
 
 MCP is currently compiled into two services. This is what moves, in what order,
 and what has to be true before each deletion.
